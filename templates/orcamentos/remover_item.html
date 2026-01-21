@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Remover Item - Orçamento #{{ orcamento.id }} - Guardião Aladin{% endblock %}
+{% block page_title %}Remover Item do Orçamento #{{ orcamento.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .info-item {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .info-item h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+    }
+    .info-item p {
+        margin: 5px 0;
+        color: #555;
+    }
+    .alert {
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Remover Item do Orçamento #{{ orcamento.id }}</h2>
+    <a href="{% url 'orcamentos:detalhes_orcamento' orcamento.id %}" class="btn btn-secondary">Voltar</a>
+</div>
+
+<div class="form-card">
+    <div class="alert alert-warning">
+        ⚠️ Tem certeza que deseja remover este item do orçamento?
+    </div>
+
+    <div class="info-item">
+        <h3>{{ item.descricao_produto }}</h3>
+        <p><strong>Produto:</strong> {{ item.produto.codigo_interno|default:"-" }} - {{ item.produto.descricao }}</p>
+        <p><strong>Quantidade:</strong> {{ item.quantidade|floatformat:3 }}</p>
+        <p><strong>Valor Unitário:</strong> R$ {{ item.valor_unitario|floatformat:2 }}</p>
+        <p><strong>Desconto:</strong> R$ {{ item.desconto|floatformat:2 }}</p>
+        <p><strong>Total:</strong> R$ {{ item.valor_total|floatformat:2 }}</p>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-actions">
+            <a href="{% url 'orcamentos:detalhes_orcamento' orcamento.id %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-danger">Confirmar Remoção</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

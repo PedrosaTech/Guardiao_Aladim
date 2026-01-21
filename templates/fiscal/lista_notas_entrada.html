@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas Fiscais de Entrada - Guardião Aladin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-card .value {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 12px;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #138496;
+        }
+        .notas-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: #34495e;
+            color: white;
+        }
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        .empty-state h3 {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📥 Notas Fiscais de Entrada</h1>
+            <div style="margin-top: 10px; font-size: 14px; opacity: 0.9;">
+                NF-e recebidas de fornecedores
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total de Notas</h3>
+                <div class="value">{{ total_notas }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Valor Total</h3>
+                <div class="value">R$ {{ total_valor|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Buscar</label>
+                <input type="text" name="search" placeholder="Número, chave de acesso ou fornecedor" 
+                       value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+            </div>
+            <div class="filter-group">
+                <label>Loja</label>
+                <select name="loja" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}" {% if filtros.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Fornecedor</label>
+                <select name="fornecedor" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    {% for fornecedor in fornecedores %}
+                    <option value="{{ fornecedor.id }}" {% if filtros.fornecedor == fornecedor.id|stringformat:"s" %}selected{% endif %}>{{ fornecedor.razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Data Entrada Início</label>
+                <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" onchange="filtrar()">
+            </div>
+            <div class="filter-group">
+                <label>Data Entrada Fim</label>
+                <input type="date" name="data_fim" value="{{ filtros.data_fim }}" onchange="filtrar()">
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+                <a href="{% url 'fiscal:lista_notas_entrada' %}" class="btn btn-info">Limpar</a>
+            </div>
+        </div>
+
+        {% if notas %}
+        <div class="notas-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Fornecedor</th>
+                        <th>Loja</th>
+                        <th>Valor Total</th>
+                        <th>Data Emissão</th>
+                        <th>Data Entrada</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nota in notas %}
+                    <tr>
+                        <td><strong>{{ nota.numero }}/{{ nota.serie }}</strong></td>
+                        <td>{{ nota.fornecedor.razao_social }}</td>
+                        <td>{{ nota.loja.nome }}</td>
+                        <td class="text-right">R$ {{ nota.valor_total|floatformat:2 }}</td>
+                        <td>{{ nota.data_emissao|date:"d/m/Y" }}</td>
+                        <td>{{ nota.data_entrada|date:"d/m/Y" }}</td>
+                        <td>
+                            <a href="{% url 'fiscal:detalhes_nota_entrada' nota.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhuma nota fiscal de entrada encontrada</h3>
+            <p>Ajuste os filtros ou importe uma nova nota fiscal.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filtrar() {
+            const params = new URLSearchParams();
+            const search = document.querySelector('input[name="search"]').value;
+            const loja = document.querySelector('select[name="loja"]').value;
+            const fornecedor = document.querySelector('select[name="fornecedor"]').value;
+            const data_inicio = document.querySelector('input[name="data_inicio"]').value;
+            const data_fim = document.querySelector('input[name="data_fim"]').value;
+            
+            if (search) params.append('search', search);
+            if (loja) params.append('loja', loja);
+            if (fornecedor) params.append('fornecedor', fornecedor);
+            if (data_inicio) params.append('data_inicio', data_inicio);
+            if (data_fim) params.append('data_fim', data_fim);
+            
+            window.location.href = '{% url "fiscal:lista_notas_entrada" %}?' + params.toString();
+        }
+    </script>
+</body>
+</html>
+

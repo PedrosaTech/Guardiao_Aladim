@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Editar{% else %}Criar{% endif %} Título a Receber - Guardião Aladin{% endblock %}
+{% block page_title %}{% if object %}Editar{% else %}Criar{% endif %} Título a Receber{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========== HEADER ========== */
+    .form-header {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+        animation: fadeInDown 0.6s ease-out;
+    }
+    
+    .form-header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* ========== FORM CARD ========== */
+    .form-card {
+        background: white;
+        padding: 35px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        max-width: 900px;
+        margin: 0 auto;
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* ========== FORM GROUPS ========== */
+    .form-section {
+        margin-bottom: 30px;
+    }
+    
+    .form-section-title {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+        font-size: 13px;
+    }
+    
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.3s;
+        box-sizing: border-box;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+    
+    .form-group .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 8px 0 0 0;
+        color: #e74c3c;
+        font-size: 12px;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    /* ========== BOTÕES ========== */
+    .form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        margin-top: 35px;
+        padding-top: 25px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .btn {
+        padding: 12px 28px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #7f8c8d;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+    
+    .error-message {
+        padding: 15px;
+        background: #f8d7da;
+        color: #721c24;
+        border-radius: 6px;
+        margin-bottom: 25px;
+        border-left: 4px solid #e74c3c;
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="form-header">
+    <h1>{% if object %}✏️ Editar{% else %}➕ Criar{% endif %} Título a Receber</h1>
+</div>
+
+<!-- Form Card -->
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div class="error-message">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        
+        <!-- Empresa e Loja -->
+        <div class="form-section">
+            <div class="form-section-title">🏢 Empresa e Loja</div>
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.empresa.label_tag }}
+                    {{ form.empresa }}
+                    {{ form.empresa.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.loja.label_tag }}
+                    {{ form.loja }}
+                    {{ form.loja.errors }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cliente e Conta -->
+        <div class="form-section">
+            <div class="form-section-title">👤 Cliente e Conta Financeira</div>
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.cliente.label_tag }}
+                    {{ form.cliente }}
+                    {{ form.cliente.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.conta_financeira.label_tag }}
+                    {{ form.conta_financeira }}
+                    {{ form.conta_financeira.errors }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Descrição -->
+        <div class="form-section">
+            <div class="form-section-title">📝 Informações do Título</div>
+            <div class="form-group">
+                {{ form.descricao.label_tag }}
+                {{ form.descricao }}
+                {{ form.descricao.errors }}
+            </div>
+            <div class="form-group">
+                {{ form.numero_documento.label_tag }}
+                {{ form.numero_documento }}
+                {{ form.numero_documento.errors }}
+            </div>
+        </div>
+        
+        <!-- Valores e Datas -->
+        <div class="form-section">
+            <div class="form-section-title">💰 Valores e Datas</div>
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.valor.label_tag }}
+                    {{ form.valor }}
+                    {{ form.valor.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.data_emissao.label_tag }}
+                    {{ form.data_emissao }}
+                    {{ form.data_emissao.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.data_vencimento.label_tag }}
+                    {{ form.data_vencimento }}
+                    {{ form.data_vencimento.errors }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status -->
+        <div class="form-section">
+            <div class="form-section-title">📊 Status</div>
+            <div class="form-group">
+                {{ form.status.label_tag }}
+                {{ form.status }}
+                {{ form.status.errors }}
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="form-actions">
+            <a href="{% if object %}{% url 'financeiro:titulo_receber_detail' object.pk %}{% else %}{% url 'financeiro:titulos_receber' %}{% endif %}" 
+               class="btn btn-secondary">
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                {% if object %}💾 Atualizar{% else %}✅ Criar{% endif %} Título
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Atualiza lojas e clientes quando empresa muda
+document.addEventListener('DOMContentLoaded', function() {
+    const empresaField = document.getElementById('id_empresa');
+    const lojaField = document.getElementById('id_loja');
+    const clienteField = document.getElementById('id_cliente');
+    const contaField = document.getElementById('id_conta_financeira');
+    
+    if (empresaField) {
+        empresaField.addEventListener('change', function() {
+            const empresaId = this.value;
+            if (empresaId) {
+                // Atualiza lojas
+                fetch(`/api/v1/lojas/?empresa=${empresaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        lojaField.innerHTML = '<option value="">---------</option>';
+                        data.forEach(loja => {
+                            lojaField.innerHTML += `<option value="${loja.id}">${loja.nome}</option>`;
+                        });
+                    });
+                
+                // Atualiza clientes
+                fetch(`/api/v1/clientes/?empresa=${empresaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        clienteField.innerHTML = '<option value="">---------</option>';
+                        data.forEach(cliente => {
+                            clienteField.innerHTML += `<option value="${cliente.id}">${cliente.nome_razao_social}</option>`;
+                        });
+                    });
+                
+                // Atualiza contas financeiras
+                fetch(`/api/v1/contas-financeiras/?empresa=${empresaId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        contaField.innerHTML = '<option value="">---------</option>';
+                        data.forEach(conta => {
+                            contaField.innerHTML += `<option value="${conta.id}">${conta.nome}</option>`;
+                        });
+                    });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

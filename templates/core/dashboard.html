@@ -1,0 +1,946 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Guardião Aladin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========== HEADER COM GRADIENTE ========== */
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        animation: fadeInDown 0.6s ease-out;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .dashboard-header-subtitle {
+        font-size: 16px;
+        opacity: 0.95;
+        font-weight: 300;
+    }
+    
+    /* ========== CARDS DE ESTATÍSTICAS ========== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--card-color);
+        transform: scaleX(0);
+        transition: transform 0.4s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .stat-card:nth-child(1) { --card-color: #3498db; animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { --card-color: #f39c12; animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { --card-color: #27ae60; animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { --card-color: #17a2b8; animation-delay: 0.4s; }
+    .stat-card:nth-child(5) { --card-color: #9b59b6; animation-delay: 0.5s; }
+    .stat-card:nth-child(6) { --card-color: #e74c3c; animation-delay: 0.6s; }
+    
+    .stat-card.primary { border-left: 4px solid #3498db; }
+    .stat-card.warning { border-left: 4px solid #f39c12; }
+    .stat-card.success { border-left: 4px solid #27ae60; }
+    .stat-card.info { border-left: 4px solid #17a2b8; }
+    .stat-card.purple { border-left: 4px solid #9b59b6; }
+    .stat-card.danger { border-left: 4px solid #e74c3c; }
+    
+    .stat-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+    
+    .stat-title {
+        color: #7f8c8d;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+        font-weight: 600;
+    }
+    
+    .stat-value {
+        color: #2c3e50;
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        line-height: 1.2;
+    }
+    
+    .stat-subtitle {
+        color: #95a5a6;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    /* ========== ALERTAS ========== */
+    .alerts-section {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+        animation: fadeInUp 0.8s ease-out;
+    }
+    
+    .section-title {
+        color: #2c3e50;
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .alert {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 24px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        animation: slideInLeft 0.5s ease-out;
+        transition: transform 0.3s;
+    }
+    
+    .alert:hover {
+        transform: translateX(5px);
+    }
+    
+    .alert.warning {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        border-left: 4px solid #f39c12;
+        color: #856404;
+    }
+    
+    .alert.danger {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        border-left: 4px solid #e74c3c;
+        color: #721c24;
+    }
+    
+    .alert.success {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-left: 4px solid #27ae60;
+        color: #155724;
+    }
+    
+    .alert-icon {
+        font-size: 28px;
+        flex-shrink: 0;
+    }
+    
+    .alert-content {
+        flex: 1;
+        font-weight: 500;
+    }
+    
+    /* ========== GRÁFICOS ========== */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 24px;
+        margin-bottom: 30px;
+    }
+    
+    .chart-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        animation: fadeInUp 0.8s ease-out;
+        transition: transform 0.3s;
+    }
+    
+    .chart-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    .chart-title {
+        color: #2c3e50;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    /* ========== AÇÕES RÁPIDAS ========== */
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }
+    
+    .quick-action {
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        text-decoration: none;
+        color: #2c3e50;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 2px solid transparent;
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .quick-action:nth-child(1) { animation-delay: 0.1s; }
+    .quick-action:nth-child(2) { animation-delay: 0.2s; }
+    .quick-action:nth-child(3) { animation-delay: 0.3s; }
+    .quick-action:nth-child(4) { animation-delay: 0.4s; }
+    .quick-action:nth-child(5) { animation-delay: 0.5s; }
+    .quick-action:nth-child(6) { animation-delay: 0.6s; }
+    .quick-action:nth-child(7) { animation-delay: 0.7s; }
+    
+    .quick-action:hover {
+        transform: translateY(-6px) scale(1.03);
+        box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+        border-color: #3498db;
+        color: #3498db;
+    }
+    
+    .quick-action-icon {
+        font-size: 36px;
+        flex-shrink: 0;
+        transition: transform 0.3s;
+    }
+    
+    .quick-action:hover .quick-action-icon {
+        transform: scale(1.2) rotate(5deg);
+    }
+    
+    .quick-action-text {
+        flex: 1;
+    }
+    
+    .quick-action-title {
+        font-weight: 700;
+        margin-bottom: 6px;
+        font-size: 16px;
+    }
+    
+    .quick-action-desc {
+        font-size: 13px;
+        color: #7f8c8d;
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.1);
+        }
+    }
+    
+    /* ========== LOADING STATES ========== */
+    .chart-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 300px;
+        color: #95a5a6;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .chart-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 300px;
+        color: #95a5a6;
+    }
+    
+    .chart-empty-icon {
+        font-size: 60px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+    
+    .chart-empty-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #7f8c8d;
+    }
+    
+    .chart-empty-desc {
+        font-size: 13px;
+        color: #aaa;
+    }
+    
+    /* ========== BREADCRUMB ========== */
+    .dashboard-breadcrumb {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 15px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .breadcrumb-nav {
+        font-size: 14px;
+        color: #7f8c8d;
+    }
+    
+    .breadcrumb-nav span {
+        margin: 0 8px;
+        color: #ccc;
+    }
+    
+    .breadcrumb-nav strong {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    .dashboard-time {
+        font-size: 13px;
+        color: #95a5a6;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* ========== RESPONSIVO ========== */
+    @media (max-width: 768px) {
+        .dashboard-header {
+            padding: 30px 20px;
+        }
+        
+        .dashboard-header h1 {
+            font-size: 24px;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .chart-container {
+            height: 250px;
+        }
+        
+        .quick-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb e Data/Hora -->
+<div class="dashboard-breadcrumb">
+    <nav class="breadcrumb-nav">
+        <span>🏠 Início</span>
+        <span>/</span>
+        <strong>Dashboard</strong>
+    </nav>
+    <div class="dashboard-time">
+        <span>📅</span>
+        <span>{{ "now"|date:"d/m/Y H:i" }}</span>
+    </div>
+</div>
+
+<!-- Header com gradiente -->
+<div class="dashboard-header">
+    <h1>🎆 Dashboard - Guardião Aladin</h1>
+    <p class="dashboard-header-subtitle">Visão geral do sistema - {{ user.get_full_name|default:user.username }}</p>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="stats-grid">
+    <div class="stat-card primary">
+        <div class="stat-icon">📦</div>
+        <div class="stat-title">Total de Produtos</div>
+        <div class="stat-value">{{ total_produtos }}</div>
+        <div class="stat-subtitle">{{ produtos_com_estoque }} com estoque</div>
+    </div>
+    
+    <div class="stat-card warning">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-title">Produtos com Restrição</div>
+        <div class="stat-value">{{ produtos_restricao }}</div>
+        <div class="stat-subtitle">Requerem atenção especial</div>
+    </div>
+    
+    <div class="stat-card success">
+        <div class="stat-icon">💰</div>
+        <div class="stat-title">Vendas do Mês</div>
+        <div class="stat-value">R$ {{ valor_mes|floatformat:2 }}</div>
+        <div class="stat-subtitle">{{ pedidos_mes }} pedidos</div>
+    </div>
+    
+    <div class="stat-card info">
+        <div class="stat-icon">🎆</div>
+        <div class="stat-title">Eventos Abertos</div>
+        <div class="stat-value">{{ eventos_abertos }}</div>
+        <div class="stat-subtitle">{{ eventos_mes }} este mês</div>
+    </div>
+    
+    <div class="stat-card purple">
+        <div class="stat-icon">📄</div>
+        <div class="stat-title">NF-e Autorizadas (Mês)</div>
+        <div class="stat-value">{{ notas_autorizadas_mes }}</div>
+        <div class="stat-subtitle">R$ {{ valor_nfe_mes|floatformat:2 }}</div>
+    </div>
+    
+    <div class="stat-card danger">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-title">Pendências</div>
+        <div class="stat-value">{{ pedidos_pendentes|add:notas_rascunho }}</div>
+        <div class="stat-subtitle">{{ pedidos_pendentes }} pedidos + {{ notas_rascunho }} NF-e</div>
+    </div>
+</div>
+
+<!-- Alertas e Notificações -->
+{% if pedidos_pendentes > 0 or notas_rascunho > 0 %}
+<div class="alerts-section">
+    <h2 class="section-title">⚡ Alertas e Notificações</h2>
+    
+    {% if pedidos_pendentes > 0 %}
+    <div class="alert warning">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content">
+            <strong>{{ pedidos_pendentes }} pedidos</strong> aguardando processamento
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if notas_rascunho > 0 %}
+    <div class="alert warning">
+        <div class="alert-icon">📄</div>
+        <div class="alert-content">
+            <strong>{{ notas_rascunho }} NF-e em rascunho</strong> aguardando autorização
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Gráficos -->
+<div class="charts-grid">
+    <div class="chart-card">
+        <h3 class="chart-title">📊 Vendas dos Últimos 7 Dias</h3>
+        <div class="chart-container">
+            <div class="chart-loading" id="loading-sales">
+                <div class="spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+            <canvas id="salesChart" style="display: none;"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3 class="chart-title">📈 Faturamento Mensal ({{ "now"|date:"Y" }})</h3>
+        <div class="chart-container">
+            <div class="chart-loading" id="loading-revenue">
+                <div class="spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+            <canvas id="revenueChart" style="display: none;"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3 class="chart-title">🏆 Top 5 Produtos Mais Vendidos (30 dias)</h3>
+        <div class="chart-container">
+            <div class="chart-loading" id="loading-products">
+                <div class="spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+            <canvas id="productsChart" style="display: none;"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3 class="chart-title">📦 Estoque por Local</h3>
+        <div class="chart-container">
+            <div class="chart-loading" id="loading-stock">
+                <div class="spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+            <canvas id="stockChart" style="display: none;"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Ações Rápidas -->
+<div class="alerts-section">
+    <h2 class="section-title">⚡ Ações Rápidas</h2>
+    <div class="quick-actions">
+        <a href="{% url 'pdv:pdv' %}" class="quick-action">
+            <div class="quick-action-icon">🛒</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">PDV - Balcão</div>
+                <div class="quick-action-desc">Venda rápida no balcão</div>
+            </div>
+        </a>
+        
+        <a href="{% url 'produtos:criar_produto' %}" class="quick-action">
+            <div class="quick-action-icon">📦</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">Novo Produto</div>
+                <div class="quick-action-desc">Cadastrar produto</div>
+            </div>
+        </a>
+        
+        <a href="{% url 'orcamentos:lista_orcamentos' %}" class="quick-action">
+            <div class="quick-action-icon">📋</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">Orçamentos</div>
+                <div class="quick-action-desc">Gerenciar orçamentos</div>
+            </div>
+        </a>
+        
+        <a href="{% url 'eventos:lista_eventos' %}" class="quick-action">
+            <div class="quick-action-icon">🎆</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">Eventos</div>
+                <div class="quick-action-desc">Gerenciar eventos</div>
+            </div>
+        </a>
+        
+        <a href="{% url 'fiscal:lista_notas_saida' %}" class="quick-action">
+            <div class="quick-action-icon">📄</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">Notas Fiscais</div>
+                <div class="quick-action-desc">Ver NF-e de saída</div>
+            </div>
+        </a>
+        
+        <a href="{% url 'pessoas:criar_cliente' %}" class="quick-action">
+            <div class="quick-action-icon">👥</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">Novo Cliente</div>
+                <div class="quick-action-desc">Cadastrar cliente</div>
+            </div>
+        </a>
+        
+        <a href="/admin/" class="quick-action">
+            <div class="quick-action-icon">⚙️</div>
+            <div class="quick-action-text">
+                <div class="quick-action-title">Admin Django</div>
+                <div class="quick-action-desc">Acesso administrativo</div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Configuração global do Chart.js
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#7f8c8d';
+    
+    // Cores do tema
+    const colors = {
+        primary: '#3498db',
+        success: '#27ae60',
+        warning: '#f39c12',
+        danger: '#e74c3c',
+        info: '#17a2b8',
+        purple: '#9b59b6',
+        gradient1: 'rgba(102, 126, 234, 0.8)',
+        gradient2: 'rgba(118, 75, 162, 0.8)',
+    };
+    
+    // Função auxiliar para mostrar mensagem de "sem dados"
+    function showEmptyChart(containerId, message) {
+        const container = document.getElementById(containerId).parentElement;
+        container.innerHTML = `
+            <div class="chart-empty">
+                <div class="chart-empty-icon">📊</div>
+                <div class="chart-empty-title">Nenhum dado disponível</div>
+                <div class="chart-empty-desc">${message}</div>
+            </div>
+        `;
+    }
+    
+    // Função auxiliar para esconder loading e mostrar gráfico
+    function hideLoading(loadingId, chartId) {
+        document.getElementById(loadingId).style.display = 'none';
+        document.getElementById(chartId).style.display = 'block';
+    }
+    
+    // Gráfico de Vendas dos Últimos 7 Dias
+    const salesLabels = {{ vendas_labels|safe }};
+    const salesData = {{ vendas_dados|safe }};
+    
+    if (salesLabels.length === 0 || (salesData.length > 0 && salesData.every(v => v === 0))) {
+        showEmptyChart('salesChart', 'Realize vendas para visualizar estatísticas');
+    } else {
+        hideLoading('loading-sales', 'salesChart');
+        const salesCanvas = document.getElementById('salesChart');
+        if (salesCanvas) {
+            const salesCtx = salesCanvas.getContext('2d');
+            new Chart(salesCtx, {
+        type: 'line',
+        data: {
+            labels: salesLabels,
+            datasets: [{
+                label: 'Vendas (R$)',
+                data: salesData,
+                borderColor: colors.primary,
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 8,
+                pointBackgroundColor: colors.primary,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    callbacks: {
+                        label: function(context) {
+                            return 'R$ ' + context.parsed.y.toFixed(2).replace('.', ',');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toFixed(0);
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+        }
+    }
+    
+    // Gráfico de Faturamento Mensal
+    const revenueLabels = {{ faturamento_labels|safe }};
+    const revenueData = {{ faturamento_dados|safe }};
+    
+    if (revenueLabels.length === 0 || (revenueData.length > 0 && revenueData.every(v => v === 0))) {
+        showEmptyChart('revenueChart', 'Realize vendas para visualizar faturamento mensal');
+    } else {
+        hideLoading('loading-revenue', 'revenueChart');
+        const revenueCanvas = document.getElementById('revenueChart');
+        if (revenueCanvas) {
+            const revenueCtx = revenueCanvas.getContext('2d');
+            new Chart(revenueCtx, {
+        type: 'bar',
+        data: {
+            labels: revenueLabels,
+            datasets: [{
+                label: 'Faturamento (R$)',
+                data: revenueData,
+                backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                borderColor: colors.primary,
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            return 'R$ ' + context.parsed.y.toFixed(2).replace('.', ',');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toFixed(0);
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+        }
+    }
+    
+    // Gráfico de Top 5 Produtos
+    const productsLabels = {{ produtos_labels|safe }};
+    const productsData = {{ produtos_dados|safe }};
+    
+    if (productsLabels.length === 0 || productsData.length === 0) {
+        showEmptyChart('productsChart', 'Realize vendas para visualizar produtos mais vendidos');
+    } else {
+        hideLoading('loading-products', 'productsChart');
+        const productsCanvas = document.getElementById('productsChart');
+        if (productsCanvas) {
+            const productsCtx = productsCanvas.getContext('2d');
+            new Chart(productsCtx, {
+            type: 'doughnut',
+            data: {
+                labels: productsLabels,
+                datasets: [{
+                    data: productsData,
+                    backgroundColor: [
+                        colors.primary,
+                        colors.success,
+                        colors.warning,
+                        colors.info,
+                        colors.purple,
+                    ],
+                    borderWidth: 3,
+                    borderColor: '#fff',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 12 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + ' unidades';
+                            }
+                        }
+                }
+            }
+        }
+    });
+        }
+    }
+    
+    // Gráfico de Estoque por Local
+    const stockLabels = {{ locais_labels|safe }};
+    const stockData = {{ locais_dados|safe }};
+    
+    if (stockLabels.length === 0 || stockData.length === 0) {
+        showEmptyChart('stockChart', 'Cadastre locais de estoque e produtos para visualizar');
+    } else {
+        hideLoading('loading-stock', 'stockChart');
+        const stockCanvas = document.getElementById('stockChart');
+        if (stockCanvas) {
+            const stockCtx = stockCanvas.getContext('2d');
+            new Chart(stockCtx, {
+            type: 'bar',
+            data: {
+                labels: stockLabels,
+                datasets: [{
+                    label: 'Quantidade',
+                    data: stockData,
+                    backgroundColor: [
+                        'rgba(52, 152, 219, 0.8)',
+                        'rgba(39, 174, 96, 0.8)',
+                        'rgba(243, 156, 18, 0.8)',
+                        'rgba(23, 162, 184, 0.8)',
+                        'rgba(155, 89, 182, 0.8)',
+                    ],
+                    borderColor: [
+                        colors.primary,
+                        colors.success,
+                        colors.warning,
+                        colors.info,
+                        colors.purple,
+                    ],
+                    borderWidth: 2,
+                    borderRadius: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.x + ' unidades';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                }
+            }
+        }
+    });
+        }
+    }
+    
+    // Log de atualização
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('pt-BR');
+    console.log(`Dashboard atualizado às ${timeStr}`);
+</script>
+{% endblock %}

@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes - Guardião Aladin{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-actions {
+        display: flex;
+        gap: 10px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    .btn-info:hover {
+        background: #138496;
+    }
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .filter-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+        font-size: 12px;
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+    }
+    .clientes-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    thead {
+        background: #34495e;
+        color: white;
+    }
+    th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    tbody tr:hover {
+        background: #f8f9fa;
+    }
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-pf { background: #3498db; color: white; }
+    .badge-pj { background: #9b59b6; color: white; }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 8px;
+    }
+    .empty-state h3 {
+        color: #7f8c8d;
+        margin-bottom: 10px;
+    }
+    .empty-state p {
+        color: #95a5a6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Lista de Clientes</h2>
+    <div class="header-actions">
+        <a href="{% url 'pessoas:criar_cliente' %}" class="btn btn-primary">+ Novo Cliente</a>
+    </div>
+</div>
+
+<div class="filters">
+    <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" name="search" placeholder="Nome, CPF/CNPJ ou e-mail" 
+               value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>Tipo de Pessoa</label>
+        <select name="tipo_pessoa" onchange="filtrar()">
+            <option value="">Todos</option>
+            {% for value, label in tipo_pessoa_choices %}
+            <option value="{{ value }}" {% if filtros.tipo_pessoa == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Empresa</label>
+        <select name="empresa" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for empresa in empresas %}
+            <option value="{{ empresa.id }}" {% if filtros.empresa == empresa.id|stringformat:"s" %}selected{% endif %}>{{ empresa.nome_fantasia }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Loja</label>
+        <select name="loja" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for loja in lojas %}
+            <option value="{{ loja.id }}" {% if filtros.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+        <a href="{% url 'pessoas:lista_clientes' %}" class="btn btn-info">Limpar</a>
+    </div>
+</div>
+
+{% if clientes %}
+<div class="clientes-table">
+    <table>
+        <thead>
+            <tr>
+                <th>Nome/Razão Social</th>
+                <th>Tipo</th>
+                <th>CPF/CNPJ</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Empresa</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+                <td><strong>{{ cliente.nome_razao_social }}</strong></td>
+                <td>
+                    {% if cliente.tipo_pessoa == 'PF' %}
+                    <span class="badge badge-pf">{{ cliente.get_tipo_pessoa_display }}</span>
+                    {% else %}
+                    <span class="badge badge-pj">{{ cliente.get_tipo_pessoa_display }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ cliente.cpf_cnpj|default:"-" }}</td>
+                <td>{{ cliente.email|default:"-" }}</td>
+                <td>{{ cliente.telefone|default:"-" }}</td>
+                <td>{{ cliente.empresa.nome_fantasia }}</td>
+                <td>
+                    <a href="{% url 'pessoas:detalhes_cliente' cliente.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>Nenhum cliente encontrado</h3>
+    <p>Comece criando um novo cliente ou ajuste os filtros.</p>
+</div>
+{% endif %}
+
+<script>
+    function filtrar() {
+        const params = new URLSearchParams();
+        const search = document.querySelector('input[name="search"]').value;
+        const tipo_pessoa = document.querySelector('select[name="tipo_pessoa"]').value;
+        const empresa = document.querySelector('select[name="empresa"]').value;
+        const loja = document.querySelector('select[name="loja"]').value;
+        
+        if (search) params.append('search', search);
+        if (tipo_pessoa) params.append('tipo_pessoa', tipo_pessoa);
+        if (empresa) params.append('empresa', empresa);
+        if (loja) params.append('loja', loja);
+        
+        window.location.href = '{% url "pessoas:lista_clientes" %}?' + params.toString();
+    }
+</script>
+{% endblock %}
+

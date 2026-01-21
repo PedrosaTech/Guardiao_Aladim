@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+
+{% block title %}Orçamentos - Guardião Aladin{% endblock %}
+{% block page_title %}Orçamentos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-actions {
+        display: flex;
+        gap: 10px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    .btn-info:hover {
+        background: #138496;
+    }
+    .btn-success {
+        background: #27ae60;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #229954;
+    }
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-card h3 {
+        color: #7f8c8d;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+    .stat-card .value {
+        color: #2c3e50;
+        font-size: 24px;
+        font-weight: 600;
+    }
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .filter-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+        font-size: 12px;
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+    }
+    .orcamentos-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    thead {
+        background: #34495e;
+        color: white;
+    }
+    th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    tbody tr:hover {
+        background: #f8f9fa;
+    }
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-rascunho { background: #95a5a6; color: white; }
+    .badge-enviado { background: #3498db; color: white; }
+    .badge-aprovado { background: #27ae60; color: white; }
+    .badge-expirado { background: #e74c3c; color: white; }
+    .badge-convertido { background: #9b59b6; color: white; }
+    .badge-cancelado { background: #7f8c8d; color: white; }
+    .badge-balcao { background: #3498db; color: white; }
+    .badge-externo { background: #f39c12; color: white; }
+    .badge-evento { background: #9b59b6; color: white; }
+    .badge-revenda { background: #16a085; color: white; }
+    .text-right {
+        text-align: right;
+    }
+    .text-center {
+        text-align: center;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 8px;
+    }
+    .empty-state h3 {
+        color: #7f8c8d;
+        margin-bottom: 10px;
+    }
+    .empty-state p {
+        color: #95a5a6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Lista de Orçamentos</h2>
+    <div class="header-actions">
+        <a href="{% url 'orcamentos:relatorio_orcamentos' %}" class="btn btn-info">📊 Relatório</a>
+        <a href="{% url 'orcamentos:criar_orcamento' %}" class="btn btn-primary">+ Novo Orçamento</a>
+    </div>
+</div>
+
+<div class="stats">
+    <div class="stat-card">
+        <h3>Total de Orçamentos</h3>
+        <div class="value">{{ total_orcamentos }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Valor Total</h3>
+        <div class="value">R$ {{ total_valor|floatformat:2 }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Expirados</h3>
+        <div class="value" style="color: #e74c3c;">{{ orcamentos_expirados }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Convertidos</h3>
+        <div class="value" style="color: #27ae60;">{{ orcamentos_convertidos }}</div>
+    </div>
+</div>
+
+<div class="filters">
+    <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" name="search" placeholder="Nome, e-mail ou observações" 
+               value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>Origem</label>
+        <select name="origem" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for value, label in origem_choices %}
+            <option value="{{ value }}" {% if filtros.origem == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Tipo de Operação</label>
+        <select name="tipo_operacao" onchange="filtrar()">
+            <option value="">Todos</option>
+            {% for value, label in tipo_operacao_choices %}
+            <option value="{{ value }}" {% if filtros.tipo_operacao == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Status</label>
+        <select name="status" onchange="filtrar()">
+            <option value="">Todos</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Empresa</label>
+        <select name="empresa" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for empresa in empresas %}
+            <option value="{{ empresa.id }}" {% if filtros.empresa == empresa.id|stringformat:"s" %}selected{% endif %}>{{ empresa.nome_fantasia }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Loja</label>
+        <select name="loja" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for loja in lojas %}
+            <option value="{{ loja.id }}" {% if filtros.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Data Início</label>
+        <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" onchange="filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>Data Fim</label>
+        <input type="date" name="data_fim" value="{{ filtros.data_fim }}" onchange="filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>
+            <input type="checkbox" name="apenas_expirados" {% if filtros.apenas_expirados %}checked{% endif %} onchange="filtrar()" style="width: auto; margin-right: 5px;">
+            Apenas Expirados
+        </label>
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+        <a href="{% url 'orcamentos:lista_orcamentos' %}" class="btn btn-info">Limpar</a>
+    </div>
+</div>
+
+{% if orcamentos %}
+<div class="orcamentos-table">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Responsável</th>
+                <th>Cliente</th>
+                <th>Origem</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Data Emissão</th>
+                <th>Data Validade</th>
+                <th>Valor Total</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for orcamento in orcamentos %}
+            <tr>
+                <td><strong>#{{ orcamento.id }}</strong></td>
+                <td>{{ orcamento.nome_responsavel }}</td>
+                <td>{{ orcamento.cliente.nome_razao_social|default:"-" }}</td>
+                <td>
+                    {% if orcamento.origem == 'BALCAO' %}
+                    <span class="badge badge-balcao">{{ orcamento.get_origem_display }}</span>
+                    {% elif orcamento.origem == 'EXTERNO' %}
+                    <span class="badge badge-externo">{{ orcamento.get_origem_display }}</span>
+                    {% elif orcamento.origem == 'EVENTO' %}
+                    <span class="badge badge-evento">{{ orcamento.get_origem_display }}</span>
+                    {% elif orcamento.origem == 'REVENDA' %}
+                    <span class="badge badge-revenda">{{ orcamento.get_origem_display }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ orcamento.get_tipo_operacao_display }}</td>
+                <td>
+                    {% if orcamento.status == 'RASCUNHO' %}
+                    <span class="badge badge-rascunho">{{ orcamento.get_status_display }}</span>
+                    {% elif orcamento.status == 'ENVIADO' %}
+                    <span class="badge badge-enviado">{{ orcamento.get_status_display }}</span>
+                    {% elif orcamento.status == 'APROVADO' %}
+                    <span class="badge badge-aprovado">{{ orcamento.get_status_display }}</span>
+                    {% elif orcamento.status == 'EXPIRADO' %}
+                    <span class="badge badge-expirado">{{ orcamento.get_status_display }}</span>
+                    {% elif orcamento.status == 'CONVERTIDO' %}
+                    <span class="badge badge-convertido">{{ orcamento.get_status_display }}</span>
+                    {% elif orcamento.status == 'CANCELADO' %}
+                    <span class="badge badge-cancelado">{{ orcamento.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ orcamento.data_emissao|date:"d/m/Y H:i" }}</td>
+                <td>
+                    {% if orcamento.data_validade < today %}
+                    <span style="color: #e74c3c;">{{ orcamento.data_validade|date:"d/m/Y" }}</span>
+                    {% else %}
+                    {{ orcamento.data_validade|date:"d/m/Y" }}
+                    {% endif %}
+                </td>
+                <td class="text-right">R$ {{ orcamento.total_liquido|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'orcamentos:detalhes_orcamento' orcamento.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>Nenhum orçamento encontrado</h3>
+    <p>Comece criando um novo orçamento ou ajuste os filtros.</p>
+</div>
+{% endif %}
+
+<script>
+    function filtrar() {
+        const params = new URLSearchParams();
+        const search = document.querySelector('input[name="search"]').value;
+        const origem = document.querySelector('select[name="origem"]').value;
+        const tipo_operacao = document.querySelector('select[name="tipo_operacao"]').value;
+        const status = document.querySelector('select[name="status"]').value;
+        const empresa = document.querySelector('select[name="empresa"]').value;
+        const loja = document.querySelector('select[name="loja"]').value;
+        const data_inicio = document.querySelector('input[name="data_inicio"]').value;
+        const data_fim = document.querySelector('input[name="data_fim"]').value;
+        const apenas_expirados = document.querySelector('input[name="apenas_expirados"]').checked;
+        
+        if (search) params.append('search', search);
+        if (origem) params.append('origem', origem);
+        if (tipo_operacao) params.append('tipo_operacao', tipo_operacao);
+        if (status) params.append('status', status);
+        if (empresa) params.append('empresa', empresa);
+        if (loja) params.append('loja', loja);
+        if (data_inicio) params.append('data_inicio', data_inicio);
+        if (data_fim) params.append('data_fim', data_fim);
+        if (apenas_expirados) params.append('apenas_expirados', 'sim');
+        
+        window.location.href = '{% url "orcamentos:lista_orcamentos" %}?' + params.toString();
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Remover Item - Pedido #{{ pedido.id }}{% endblock %}
+{% block page_title %}Remover Item do Pedido #{{ pedido.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .alert {
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    .info-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h1 style="color: #2c3e50; margin-bottom: 30px;">Remover Item</h1>
+    
+    <div class="alert alert-warning">
+        <strong>⚠️ Atenção!</strong> Você está prestes a remover um item do pedido. Esta ação não pode ser desfeita.
+    </div>
+    
+    <div class="info-box">
+        <strong>Produto:</strong> {{ item.produto.descricao }}<br>
+        <strong>Quantidade:</strong> {{ item.quantidade }} {{ item.produto.unidade_comercial }}<br>
+        <strong>Preço Unitário:</strong> R$ {{ item.preco_unitario|floatformat:2 }}<br>
+        <strong>Total:</strong> R$ {{ item.total|floatformat:2 }}
+    </div>
+    
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-actions">
+            <a href="{% url 'vendas:detalhes_pedido' pedido.id %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-danger">Confirmar Remoção</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+

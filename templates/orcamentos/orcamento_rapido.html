@@ -1,0 +1,630 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Orçamento Rápido - Guardião Aladin{% endblock %}
+{% block page_title %}Orçamento Rápido{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rapido-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .header-rapido {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .header-rapido h1 {
+        margin: 0;
+        font-size: 24px;
+    }
+    .form-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .form-section h2 {
+        margin-top: 0;
+        color: #2c3e50;
+        font-size: 18px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #34495e;
+    }
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    .autocomplete-container {
+        position: relative;
+    }
+    .autocomplete-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 5px 5px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .autocomplete-results.visible {
+        display: block;
+    }
+    .autocomplete-item {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    .autocomplete-item:hover {
+        background: #f5f5f5;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .itens-section {
+        margin-top: 20px;
+    }
+    .busca-produto {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .busca-produto input {
+        flex: 1;
+    }
+    .busca-produto button {
+        padding: 10px 20px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .busca-produto button:hover {
+        background: #2980b9;
+    }
+    .itens-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .itens-table th {
+        background: #34495e;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    .itens-table td {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+    }
+    .itens-table tbody tr:hover {
+        background: #f5f5f5;
+    }
+    .itens-table .text-right {
+        text-align: right;
+    }
+    .itens-table .text-center {
+        text-align: center;
+    }
+    .btn-remove {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .btn-remove:hover {
+        background: #c0392b;
+    }
+    .totais-box {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+        border: 2px solid #3498db;
+    }
+    .totais-box h3 {
+        margin-top: 0;
+        color: #2c3e50;
+    }
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #ddd;
+    }
+    .total-row:last-child {
+        border-bottom: none;
+        border-top: 2px solid #2c3e50;
+        margin-top: 10px;
+        padding-top: 10px;
+        font-size: 20px;
+        font-weight: bold;
+        color: #27ae60;
+    }
+    .acoes-box {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-success {
+        background: #27ae60;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #229954;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
+    .empty-state p {
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    .input-quantidade {
+        width: 80px;
+        text-align: center;
+    }
+    .input-desconto {
+        width: 100px;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rapido-container">
+    <div class="header-rapido">
+        <div>
+            <h1>⚡ Orçamento Rápido</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9;">Criação rápida de orçamentos no balcão</p>
+        </div>
+        <a href="{% url 'orcamentos:lista_orcamentos' %}" class="btn btn-secondary" style="background: rgba(255,255,255,0.2); border: 1px solid white;">Ver Todos</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="message {{ message.tags }}" style="margin-bottom: 20px;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" id="form-orcamento-rapido">
+        {% csrf_token %}
+        
+        <!-- Dados do Cliente/Responsável -->
+        <div class="form-section">
+            <h2>👤 Cliente / Responsável</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Buscar Cliente (Opcional)</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="busca-cliente" placeholder="Digite nome, CPF/CNPJ, email..." autocomplete="off">
+                        <input type="hidden" name="cliente_id" id="cliente_id">
+                        <div class="autocomplete-results" id="resultados-cliente"></div>
+                    </div>
+                    <div id="cliente-selecionado" style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 5px; display: none;">
+                        <strong>Cliente selecionado:</strong> <span id="cliente-nome"></span>
+                        <button type="button" onclick="removerCliente()" style="float: right; background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">Remover</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Nome do Responsável <span id="nome-required" style="color: #e74c3c;">*</span></label>
+                    <input type="text" name="nome_responsavel" id="nome_responsavel" placeholder="Nome completo do responsável">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Telefone de Contato</label>
+                    <input type="text" name="telefone_contato" id="telefone_contato" placeholder="(00) 00000-0000">
+                </div>
+                <div class="form-group">
+                    <label>E-mail de Contato</label>
+                    <input type="email" name="email_contato" id="email_contato" placeholder="email@exemplo.com">
+                </div>
+            </div>
+        </div>
+
+        <!-- Busca e Adição de Produtos -->
+        <div class="form-section">
+            <h2>📦 Produtos</h2>
+            <div class="busca-produto">
+                <div class="autocomplete-container" style="flex: 1;">
+                    <input type="text" id="busca-produto" placeholder="Digite código, código de barras ou descrição do produto..." autocomplete="off">
+                    <div class="autocomplete-results" id="resultados-produto"></div>
+                </div>
+                <button type="button" onclick="adicionarProdutoSelecionado()" id="btn-adicionar-produto" disabled>+ Adicionar</button>
+            </div>
+            <input type="hidden" id="produto-selecionado-id">
+            <input type="hidden" id="produto-selecionado-dados">
+        </div>
+
+        <!-- Tabela de Itens -->
+        <div class="form-section itens-section">
+            <h2>🛒 Itens do Orçamento</h2>
+            <table class="itens-table" id="tabela-itens">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Classe Risco</th>
+                        <th>Qtde</th>
+                        <th>Valor Unit.</th>
+                        <th>Desconto</th>
+                        <th>Total</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="itens-tbody">
+                    <tr id="empty-row">
+                        <td colspan="8" class="empty-state">
+                            <p>Nenhum produto adicionado</p>
+                            <p style="font-size: 14px;">Busque e adicione produtos acima</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totais -->
+        <div class="totais-box">
+            <h3>💰 Resumo Financeiro</h3>
+            <div class="total-row">
+                <span>Total Bruto:</span>
+                <span id="total-bruto">R$ 0,00</span>
+            </div>
+            <div class="total-row">
+                <span>Desconto Total:</span>
+                <span id="total-desconto" style="color: #e74c3c;">R$ 0,00</span>
+            </div>
+            <div class="total-row">
+                <span><strong>VALOR TOTAL:</strong></span>
+                <span id="total-liquido"><strong>R$ 0,00</strong></span>
+            </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="acoes-box">
+            <button type="submit" name="acao" value="rascunho" class="btn btn-primary">💾 Salvar como Rascunho</button>
+            <button type="submit" name="acao" value="finalizar" class="btn btn-success">✅ Finalizar Orçamento</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    let itens = [];
+    let produtoSelecionado = null;
+    let clienteSelecionado = null;
+    let timeoutBuscaProduto = null;
+    let timeoutBuscaCliente = null;
+
+    // Busca de produtos
+    document.getElementById('busca-produto').addEventListener('input', function(e) {
+        clearTimeout(timeoutBuscaProduto);
+        const termo = e.target.value.trim();
+        
+        if (termo.length < 2) {
+            document.getElementById('resultados-produto').classList.remove('visible');
+            produtoSelecionado = null;
+            document.getElementById('btn-adicionar-produto').disabled = true;
+            return;
+        }
+        
+        timeoutBuscaProduto = setTimeout(() => {
+            buscarProdutos(termo);
+        }, 300);
+    });
+
+    function buscarProdutos(termo) {
+        fetch(`{% url 'orcamentos:api_produtos_rapido' %}?q=${encodeURIComponent(termo)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultados = document.getElementById('resultados-produto');
+                resultados.innerHTML = '';
+                
+                if (data.produtos && data.produtos.length > 0) {
+                    data.produtos.forEach(produto => {
+                        const item = document.createElement('div');
+                        item.className = 'autocomplete-item';
+                        item.innerHTML = `
+                            <strong>${produto.codigo_interno}</strong> - ${produto.descricao}<br>
+                            <small>R$ ${parseFloat(produto.preco_venda_sugerido).toFixed(2).replace('.', ',')} | ${produto.unidade_comercial}</small>
+                        `;
+                        item.onclick = () => selecionarProduto(produto);
+                        resultados.appendChild(item);
+                    });
+                    resultados.classList.add('visible');
+                } else {
+                    resultados.classList.remove('visible');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar produtos:', error);
+            });
+    }
+
+    function selecionarProduto(produto) {
+        produtoSelecionado = produto;
+        document.getElementById('busca-produto').value = `${produto.codigo_interno} - ${produto.descricao}`;
+        document.getElementById('resultados-produto').classList.remove('visible');
+        document.getElementById('btn-adicionar-produto').disabled = false;
+    }
+
+    function adicionarProdutoSelecionado() {
+        if (!produtoSelecionado) return;
+        
+        // Verificar se produto já foi adicionado
+        if (itens.find(item => item.produto_id === produtoSelecionado.id)) {
+            alert('Este produto já foi adicionado ao orçamento.');
+            return;
+        }
+        
+        const item = {
+            produto_id: produtoSelecionado.id,
+            codigo_interno: produtoSelecionado.codigo_interno,
+            descricao: produtoSelecionado.descricao,
+            classe_risco: produtoSelecionado.classe_risco,
+            subclasse_risco: produtoSelecionado.subclasse_risco || '',
+            quantidade: 1,
+            valor_unitario: parseFloat(produtoSelecionado.preco_venda_sugerido),
+            desconto: 0,
+        };
+        
+        itens.push(item);
+        atualizarTabelaItens();
+        
+        // Limpar busca
+        document.getElementById('busca-produto').value = '';
+        produtoSelecionado = null;
+        document.getElementById('btn-adicionar-produto').disabled = true;
+    }
+
+    function atualizarTabelaItens() {
+        const tbody = document.getElementById('itens-tbody');
+        tbody.innerHTML = '';
+        
+        if (itens.length === 0) {
+            tbody.innerHTML = `
+                <tr id="empty-row">
+                    <td colspan="8" class="empty-state">
+                        <p>Nenhum produto adicionado</p>
+                        <p style="font-size: 14px;">Busque e adicione produtos acima</p>
+                    </td>
+                </tr>
+            `;
+        } else {
+            itens.forEach((item, index) => {
+                const total = (item.quantidade * item.valor_unitario) - item.desconto;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.codigo_interno}</td>
+                    <td>${item.descricao}</td>
+                    <td>${item.classe_risco}${item.subclasse_risco ? ' - ' + item.subclasse_risco : ''}</td>
+                    <td>
+                        <input type="number" class="input-quantidade" step="0.001" min="0.001" value="${item.quantidade}" 
+                               onchange="atualizarItem(${index}, 'quantidade', this.value)">
+                    </td>
+                    <td class="text-right">R$ ${item.valor_unitario.toFixed(2).replace('.', ',')}</td>
+                    <td>
+                        <input type="number" class="input-desconto" step="0.01" min="0" value="${item.desconto}" 
+                               onchange="atualizarItem(${index}, 'desconto', this.value)">
+                    </td>
+                    <td class="text-right"><strong>R$ ${total.toFixed(2).replace('.', ',')}</strong></td>
+                    <td class="text-center">
+                        <button type="button" class="btn-remove" onclick="removerItem(${index})">Remover</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        calcularTotais();
+    }
+
+    function atualizarItem(index, campo, valor) {
+        if (campo === 'quantidade') {
+            itens[index].quantidade = parseFloat(valor) || 1;
+        } else if (campo === 'desconto') {
+            itens[index].desconto = parseFloat(valor) || 0;
+        }
+        atualizarTabelaItens();
+    }
+
+    function removerItem(index) {
+        if (confirm('Deseja remover este item?')) {
+            itens.splice(index, 1);
+            atualizarTabelaItens();
+        }
+    }
+
+    function calcularTotais() {
+        let totalBruto = 0;
+        let totalDesconto = 0;
+        
+        itens.forEach(item => {
+            totalBruto += item.quantidade * item.valor_unitario;
+            totalDesconto += item.desconto;
+        });
+        
+        const totalLiquido = totalBruto - totalDesconto;
+        
+        document.getElementById('total-bruto').textContent = 'R$ ' + totalBruto.toFixed(2).replace('.', ',');
+        document.getElementById('total-desconto').textContent = 'R$ ' + totalDesconto.toFixed(2).replace('.', ',');
+        document.getElementById('total-liquido').innerHTML = '<strong>R$ ' + totalLiquido.toFixed(2).replace('.', ',') + '</strong>';
+    }
+
+    // Busca de clientes
+    document.getElementById('busca-cliente').addEventListener('input', function(e) {
+        clearTimeout(timeoutBuscaCliente);
+        const termo = e.target.value.trim();
+        
+        if (termo.length < 2) {
+            document.getElementById('resultados-cliente').classList.remove('visible');
+            return;
+        }
+        
+        timeoutBuscaCliente = setTimeout(() => {
+            buscarClientes(termo);
+        }, 300);
+    });
+
+    function buscarClientes(termo) {
+        fetch(`{% url 'orcamentos:api_clientes_rapido' %}?q=${encodeURIComponent(termo)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultados = document.getElementById('resultados-cliente');
+                resultados.innerHTML = '';
+                
+                if (data.clientes && data.clientes.length > 0) {
+                    data.clientes.forEach(cliente => {
+                        const item = document.createElement('div');
+                        item.className = 'autocomplete-item';
+                        item.innerHTML = `
+                            <strong>${cliente.nome_razao_social}</strong><br>
+                            <small>${cliente.cpf_cnpj || ''} ${cliente.telefone ? '| ' + cliente.telefone : ''}</small>
+                        `;
+                        item.onclick = () => selecionarCliente(cliente);
+                        resultados.appendChild(item);
+                    });
+                    resultados.classList.add('visible');
+                } else {
+                    resultados.classList.remove('visible');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar clientes:', error);
+            });
+    }
+
+    function selecionarCliente(cliente) {
+        clienteSelecionado = cliente;
+        document.getElementById('cliente_id').value = cliente.id;
+        document.getElementById('cliente-nome').textContent = cliente.nome_razao_social;
+        document.getElementById('cliente-selecionado').style.display = 'block';
+        document.getElementById('nome_responsavel').value = cliente.nome_razao_social;
+        document.getElementById('nome_responsavel').readOnly = true;
+        document.getElementById('nome-required').style.display = 'none';
+        document.getElementById('busca-cliente').value = '';
+        document.getElementById('resultados-cliente').classList.remove('visible');
+        
+        // Preencher campos opcionais se disponíveis
+        if (cliente.telefone) {
+            document.getElementById('telefone_contato').value = cliente.telefone;
+        }
+        if (cliente.email) {
+            document.getElementById('email_contato').value = cliente.email;
+        }
+    }
+
+    function removerCliente() {
+        clienteSelecionado = null;
+        document.getElementById('cliente_id').value = '';
+        document.getElementById('cliente-selecionado').style.display = 'none';
+        document.getElementById('nome_responsavel').value = '';
+        document.getElementById('nome_responsavel').readOnly = false;
+        document.getElementById('nome-required').style.display = 'inline';
+    }
+
+    // Fechar autocomplete ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-container')) {
+            document.getElementById('resultados-produto').classList.remove('visible');
+            document.getElementById('resultados-cliente').classList.remove('visible');
+        }
+    });
+
+    // Submissão do formulário
+    document.getElementById('form-orcamento-rapido').addEventListener('submit', function(e) {
+        // Validar que há pelo menos 1 item
+        if (itens.length === 0) {
+            e.preventDefault();
+            alert('É necessário adicionar pelo menos um produto ao orçamento.');
+            return false;
+        }
+        
+        // Validar cliente ou nome_responsavel
+        const clienteId = document.getElementById('cliente_id').value;
+        const nomeResponsavel = document.getElementById('nome_responsavel').value.trim();
+        
+        if (!clienteId && !nomeResponsavel) {
+            e.preventDefault();
+            alert('É necessário informar um cliente ou o nome do responsável.');
+            return false;
+        }
+        
+        // Adicionar itens ao formulário como JSON
+        const itensInput = document.createElement('input');
+        itensInput.type = 'hidden';
+        itensInput.name = 'itens';
+        itensInput.value = JSON.stringify(itens);
+        this.appendChild(itensInput);
+    });
+</script>
+{% endblock %}
+

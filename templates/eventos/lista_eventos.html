@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eventos - Guardião Aladin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .event-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        .event-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .event-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-rascunho { background: #ecf0f1; color: #7f8c8d; }
+        .status-proposta_enviada { background: #fff3cd; color: #856404; }
+        .status-aprovado { background: #d4edda; color: #155724; }
+        .status-em_execucao { background: #cce5ff; color: #004085; }
+        .status-concluido { background: #d1ecf1; color: #0c5460; }
+        .status-cancelado { background: #f8d7da; color: #721c24; }
+        .event-info {
+            margin-bottom: 15px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .info-value {
+            color: #2c3e50;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .event-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #138496;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        .empty-state h3 {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎆 Eventos de Venda</h1>
+            <div class="header-actions">
+                <a href="{% url 'eventos:dashboard_eventos' %}" class="btn btn-info">Dashboard</a>
+                <a href="{% url 'eventos:criar_evento' %}" class="btn btn-primary">+ Novo Evento</a>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Buscar</label>
+                <input type="text" name="search" placeholder="Nome do evento ou responsável" 
+                       value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select name="status" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if filtros.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Tipo de Evento</label>
+                <select name="tipo_evento" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    {% for value, label in tipo_choices %}
+                    <option value="{{ value }}" {% if filtros.tipo_evento == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Loja</label>
+                <select name="loja" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}" {% if filtros.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+                <a href="{% url 'eventos:lista_eventos' %}" class="btn btn-sm">Limpar</a>
+            </div>
+        </div>
+
+        {% if eventos %}
+        <div class="events-grid">
+            {% for evento in eventos %}
+            <div class="event-card">
+                <div class="event-header">
+                    <div>
+                        <div class="event-title">{{ evento.nome_evento }}</div>
+                        <div style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">
+                            {{ evento.get_tipo_evento_display }}
+                        </div>
+                    </div>
+                    <span class="event-status status-{{ evento.status|lower }}">{{ evento.get_status_display }}</span>
+                </div>
+                
+                <div class="event-info">
+                    <div class="info-row">
+                        <span class="info-label">Data:</span>
+                        <span class="info-value">{{ evento.data_evento|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Loja:</span>
+                        <span class="info-value">{{ evento.loja.nome }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Responsável:</span>
+                        <span class="info-value">{{ evento.responsavel_evento|truncatewords:3 }}</span>
+                    </div>
+                    {% if evento.pedido %}
+                    <div class="info-row">
+                        <span class="info-label">Pedido:</span>
+                        <span class="info-value">#{{ evento.pedido.id }} - R$ {{ evento.pedido.valor_total|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="event-actions">
+                    <a href="{% url 'eventos:detalhes_evento' evento.id %}" class="btn btn-info btn-sm">Ver Detalhes</a>
+                    {% if evento.pedido %}
+                    <a href="{% url 'eventos:proposta_evento' evento.id %}" class="btn btn-warning btn-sm">Proposta</a>
+                    {% else %}
+                    <button class="btn btn-success btn-sm" onclick="gerarPedido({{ evento.id }})">Gerar Pedido</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhum evento encontrado</h3>
+            <p>Comece criando um novo evento ou ajuste os filtros.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filtrar() {
+            const params = new URLSearchParams();
+            const search = document.querySelector('input[name="search"]').value;
+            const status = document.querySelector('select[name="status"]').value;
+            const tipo = document.querySelector('select[name="tipo_evento"]').value;
+            const loja = document.querySelector('select[name="loja"]').value;
+            
+            if (search) params.append('search', search);
+            if (status) params.append('status', status);
+            if (tipo) params.append('tipo_evento', tipo);
+            if (loja) params.append('loja', loja);
+            
+            window.location.href = '{% url "eventos:lista_eventos" %}?' + params.toString();
+        }
+
+        function gerarPedido(eventoId) {
+            if (!confirm('Deseja gerar o pedido de venda para este evento?')) return;
+            
+            fetch(`/eventos/gerar-pedido/${eventoId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    alert(data.mensagem);
+                    window.location.reload();
+                } else {
+                    alert('Erro: ' + (data.erro || 'Erro desconhecido'));
+                }
+            })
+            .catch(error => {
+                alert('Erro ao gerar pedido: ' + error);
+            });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
+

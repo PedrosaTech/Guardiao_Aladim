@@ -1,0 +1,378 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Fechar Caixa - Guardião Aladin{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ESCONDER SIDEBAR E TOPBAR */
+    .sidebar {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    .topbar {
+        display: none !important;
+    }
+    
+    .content-wrapper {
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+    }
+    
+    body {
+        display: block !important;
+    }
+    
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .caixa-container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 700px;
+        width: 100%;
+        padding: 40px;
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .caixa-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .caixa-header h1 {
+        font-size: 32px;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+
+    .caixa-header p {
+        color: #7f8c8d;
+        font-size: 14px;
+    }
+
+    .resumo-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+
+    .resumo-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .resumo-row:last-child {
+        border-bottom: none;
+    }
+
+    .resumo-row strong {
+        color: #2c3e50;
+    }
+
+    .resumo-row .valor {
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .resumo-row.total {
+        margin-top: 10px;
+        padding-top: 15px;
+        border-top: 2px solid #667eea;
+        font-size: 20px;
+    }
+
+    .resumo-row.total .valor {
+        color: #27ae60;
+        font-size: 24px;
+    }
+
+    .diferenca {
+        background: #fff9e6;
+        border: 2px solid #f39c12;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .diferenca.positiva {
+        background: #efe;
+        border-color: #27ae60;
+    }
+
+    .diferenca.negativa {
+        background: #fee;
+        border-color: #e74c3c;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #2c3e50;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 18px;
+        transition: all 0.3s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input[type="number"] {
+        text-align: right;
+        font-weight: bold;
+        color: #27ae60;
+    }
+
+    .form-actions {
+        display: grid;
+        gap: 12px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 15px 30px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+
+    .info-box {
+        background: #e8f4f8;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .info-box strong {
+        color: #2c3e50;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .info-box p {
+        color: #7f8c8d;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .messages {
+        margin-bottom: 20px;
+    }
+
+    .alert {
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
+
+    .alert-error {
+        background: #fee;
+        border: 2px solid #e74c3c;
+        color: #c0392b;
+    }
+
+    .alert-success {
+        background: #efe;
+        border: 2px solid #27ae60;
+        color: #229954;
+    }
+
+    .alert-warning {
+        background: #fff9e6;
+        border: 2px solid #f39c12;
+        color: #d68910;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="caixa-container">
+    <div class="caixa-header">
+        <h1>🔒 Fechar Caixa</h1>
+        <p>Encerre a sessão de caixa atual</p>
+    </div>
+
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="info-box">
+        <strong>📅 Sessão de Caixa</strong>
+        <p>
+            Aberto em: {{ caixa.data_hora_abertura|date:"d/m/Y H:i" }}<br>
+            Operador: {{ caixa.usuario_abertura.get_full_name|default:caixa.usuario_abertura.username }}
+        </p>
+    </div>
+
+    <div class="resumo-section">
+        <div class="resumo-row">
+            <strong>Saldo Inicial:</strong>
+            <span class="valor">R$ {{ caixa.saldo_inicial|floatformat:2 }}</span>
+        </div>
+        <div class="resumo-row">
+            <strong>Total Recebido:</strong>
+            <span class="valor">R$ {{ total_recebido|floatformat:2 }}</span>
+        </div>
+        <div class="resumo-row total">
+            <strong>Saldo Esperado:</strong>
+            <span class="valor">R$ {{ saldo_esperado|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    {% if diferenca %}
+    <div class="diferenca {% if diferenca > 0 %}positiva{% else %}negativa{% endif %}">
+        <strong>
+            {% if diferenca > 0 %}
+                ✅ Sobra: R$ {{ diferenca|floatformat:2 }}
+            {% else %}
+                ⚠️ Falta: R$ {{ diferenca_abs|floatformat:2 }}
+            {% endif %}
+        </strong>
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="saldo_final">Saldo Final Contado (R$)</label>
+            <input 
+                type="number" 
+                id="saldo_final" 
+                name="saldo_final" 
+                step="0.01" 
+                min="0" 
+                value="{{ saldo_esperado|floatformat:2 }}" 
+                required
+                autofocus
+            >
+            <div style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">
+                Informe o valor em dinheiro contado fisicamente no caixa
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-danger">
+                🔒 Fechar Caixa
+            </button>
+            <a href="{% url 'pdv:pdv' %}" class="btn btn-secondary">
+                ← Voltar ao PDV
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Formatação automática do valor
+    const saldoInput = document.getElementById('saldo_final');
+    
+    saldoInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        // Remove caracteres não numéricos exceto ponto
+        value = value.replace(/[^\d.]/g, '');
+        e.target.value = value;
+    });
+
+    // Calcular diferença em tempo real
+    const saldoEsperado = {{ saldo_esperado }};
+    
+    saldoInput.addEventListener('input', function() {
+        const saldoFinal = parseFloat(this.value) || 0;
+        const diferenca = saldoFinal - saldoEsperado;
+        
+        // Atualizar visualmente se necessário
+        console.log('Diferença:', diferenca);
+    });
+
+    // Foco automático
+    saldoInput.focus();
+    saldoInput.select();
+</script>
+{% endblock %}
+

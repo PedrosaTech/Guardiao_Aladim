@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Item - Orçamento #{{ orcamento.id }} - Guardião Aladin{% endblock %}
+{% block page_title %}Editar Item do Orçamento #{{ orcamento.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .info-produto {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .info-produto h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+    }
+    .info-produto p {
+        margin: 5px 0;
+        color: #555;
+    }
+    .total-display {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+    }
+    .total-display label {
+        color: #2c3e50;
+        font-size: 16px;
+    }
+    .total-display .value {
+        font-size: 24px;
+        font-weight: 600;
+        color: #27ae60;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Editar Item do Orçamento #{{ orcamento.id }}</h2>
+    <a href="{% url 'orcamentos:detalhes_orcamento' orcamento.id %}" class="btn btn-secondary">Voltar</a>
+</div>
+
+<div class="form-card">
+    <div class="info-produto">
+        <h3>{{ item.produto.descricao }}</h3>
+        <p><strong>Código:</strong> {{ item.produto.codigo_interno|default:"-" }}</p>
+        <p><strong>Classe de Risco:</strong> {{ item.classe_risco }}{% if item.subclasse_risco %} - {{ item.subclasse_risco }}{% endif %}</p>
+        <p><strong>Preço Sugerido:</strong> R$ {{ item.produto.preco_venda_sugerido|floatformat:2 }}</p>
+    </div>
+
+    <form method="POST" id="form-item">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label>Quantidade <span class="required">*</span></label>
+            <input type="number" name="quantidade" id="quantidade" step="0.001" min="0.001" value="{{ item.quantidade }}" required onchange="calcularTotal()">
+        </div>
+        
+        <div class="form-group">
+            <label>Valor Unitário</label>
+            <input type="number" id="valor_unitario_display" step="0.01" value="{{ item.valor_unitario }}" readonly style="background-color: #f5f5f5; cursor: not-allowed;">
+            <input type="hidden" name="valor_unitario" id="valor_unitario" value="{{ item.valor_unitario }}">
+            <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">O valor unitário é definido pelo preço sugerido do produto e não pode ser alterado.</p>
+        </div>
+
+        <div class="form-group">
+            <label>Desconto</label>
+            <input type="number" name="desconto" id="desconto" step="0.01" min="0" value="{{ item.desconto }}" onchange="calcularTotal()">
+        </div>
+
+        <div class="total-display">
+            <label>Total do Item:</label>
+            <div class="value" id="total-item">R$ {{ item.valor_total|floatformat:2 }}</div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'orcamentos:detalhes_orcamento' orcamento.id %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function calcularTotal() {
+        const quantidade = parseFloat(document.getElementById('quantidade').value) || 0;
+        const valorUnitario = parseFloat(document.getElementById('valor_unitario').value) || 0;
+        const desconto = parseFloat(document.getElementById('desconto').value) || 0;
+        
+        const total = (quantidade * valorUnitario) - desconto;
+        const totalFormatado = total.toFixed(2).replace('.', ',');
+        
+        document.getElementById('total-item').textContent = 'R$ ' + totalFormatado;
+        
+        // Atualizar display do valor unitário (sempre igual ao hidden)
+        document.getElementById('valor_unitario_display').value = valorUnitario.toFixed(2);
+    }
+    
+    // Calcular total ao carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        calcularTotal();
+    });
+</script>
+{% endblock %}
+

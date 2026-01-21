@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block title %}Pedido #{{ pedido.id }} - Guardião Aladin{% endblock %}
+{% block page_title %}Pedido #{{ pedido.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .card h2 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        color: #7f8c8d;
+        font-size: 12px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    .info-value {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 500;
+    }
+    .badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-orcamento { background: #95a5a6; color: white; }
+    .badge-aberto { background: #3498db; color: white; }
+    .badge-faturado { background: #27ae60; color: white; }
+    .badge-cancelado { background: #e74c3c; color: white; }
+    .badge-balcao { background: #9b59b6; color: white; }
+    .badge-externa { background: #f39c12; color: white; }
+    .badge-evento { background: #16a085; color: white; }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .table th,
+    .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    .table td {
+        color: #555;
+    }
+    .text-right {
+        text-align: right;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .btn-success {
+        background: #27ae60;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #229954;
+    }
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+    .btn-warning {
+        background: #f39c12;
+        color: white;
+    }
+    .btn-warning:hover {
+        background: #e67e22;
+    }
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    .btn-info:hover {
+        background: #138496;
+    }
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    .total-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+    }
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+    .total-row.final {
+        font-size: 20px;
+        font-weight: 600;
+        color: #27ae60;
+        border-top: 2px solid #27ae60;
+        padding-top: 10px;
+        margin-top: 10px;
+    }
+    .actions-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    @media (max-width: 968px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="color: #2c3e50; margin: 0;">Pedido #{{ pedido.id }}</h2>
+        <div style="margin-top: 5px; font-size: 14px; color: #7f8c8d;">
+            {{ pedido.cliente.nome_razao_social }}
+        </div>
+    </div>
+    <div>
+        <a href="{% url 'vendas:lista_pedidos' %}" class="btn btn-secondary">← Voltar</a>
+        {% if pedido.status != 'FATURADO' and pedido.status != 'CANCELADO' %}
+        <a href="{% url 'vendas:editar_pedido' pedido.id %}" class="btn btn-info">✏️ Editar</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="content-grid">
+    <div>
+        <div class="card">
+            <h2>📋 Informações do Pedido</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">
+                        <span class="badge badge-{{ pedido.status|lower }}">{{ pedido.get_status_display }}</span>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Tipo de Venda</span>
+                    <span class="info-value">
+                        <span class="badge badge-{{ pedido.tipo_venda|lower }}">{{ pedido.get_tipo_venda_display }}</span>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Data de Emissão</span>
+                    <span class="info-value">{{ pedido.data_emissao|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Vendedor</span>
+                    <span class="info-value">{{ pedido.vendedor.get_full_name|default:pedido.vendedor.username }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Loja</span>
+                    <span class="info-value">{{ pedido.loja.nome_fantasia }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Condição de Pagamento</span>
+                    <span class="info-value">{{ pedido.condicao_pagamento.nome }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">🛒 Itens do Pedido</h2>
+                {% if pedido.status != 'FATURADO' and pedido.status != 'CANCELADO' %}
+                <a href="{% url 'vendas:adicionar_item_pedido' pedido.id %}" class="btn btn-success btn-sm">+ Adicionar Item</a>
+                {% endif %}
+            </div>
+            
+            {% if itens %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th class="text-right">Quantidade</th>
+                        <th class="text-right">Preço Unit.</th>
+                        <th class="text-right">Desconto</th>
+                        <th class="text-right">Total</th>
+                        {% if pedido.status != 'FATURADO' and pedido.status != 'CANCELADO' %}
+                        <th>Ações</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>
+                            <strong>{{ item.produto.descricao }}</strong><br>
+                            <small style="color: #7f8c8d;">Código: {{ item.produto.codigo_interno }}</small>
+                        </td>
+                        <td class="text-right">{{ item.quantidade }} {{ item.produto.unidade_comercial }}</td>
+                        <td class="text-right">R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                        <td class="text-right">R$ {{ item.desconto|floatformat:2 }}</td>
+                        <td class="text-right"><strong>R$ {{ item.total|floatformat:2 }}</strong></td>
+                        {% if pedido.status != 'FATURADO' and pedido.status != 'CANCELADO' %}
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <a href="{% url 'vendas:editar_item_pedido' pedido.id item.id %}" class="btn btn-info btn-sm">✏️</a>
+                                <a href="{% url 'vendas:remover_item_pedido' pedido.id item.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Deseja realmente remover este item?')">🗑️</a>
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="total-section">
+                <div class="total-row final">
+                    <span>Total do Pedido:</span>
+                    <span>R$ {{ pedido.valor_total|floatformat:2 }}</span>
+                </div>
+            </div>
+            {% else %}
+            <p style="text-align: center; padding: 40px; color: #7f8c8d;">
+                Nenhum item adicionado ao pedido.
+            </p>
+            {% endif %}
+        </div>
+
+        {% if pedido.observacoes %}
+        <div class="card">
+            <h2>📝 Observações</h2>
+            <p style="color: #555; white-space: pre-wrap;">{{ pedido.observacoes }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <div class="card">
+            <h2>👤 Cliente</h2>
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">Nome/Razão Social</span>
+                <span class="info-value">{{ pedido.cliente.nome_razao_social }}</span>
+            </div>
+            {% if pedido.cliente.apelido_nome_fantasia %}
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">Apelido/Nome Fantasia</span>
+                <span class="info-value">{{ pedido.cliente.apelido_nome_fantasia }}</span>
+            </div>
+            {% endif %}
+            {% if pedido.cliente.cpf_cnpj %}
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">CPF/CNPJ</span>
+                <span class="info-value">{{ pedido.cliente.cpf_cnpj }}</span>
+            </div>
+            {% endif %}
+            {% if pedido.cliente.telefone %}
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">Telefone</span>
+                <span class="info-value">{{ pedido.cliente.telefone }}</span>
+            </div>
+            {% endif %}
+            {% if pedido.cliente.email %}
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">E-mail</span>
+                <span class="info-value">{{ pedido.cliente.email }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h2>⚡ Ações</h2>
+            <div class="actions-grid">
+                {% if pedido.status != 'FATURADO' and pedido.status != 'CANCELADO' %}
+                    {% if itens %}
+                    <form method="POST" action="{% url 'vendas:faturar_pedido' pedido.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success" onclick="return confirm('Deseja realmente faturar este pedido?')">✅ Faturar</button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{% url 'vendas:cancelar_pedido' pedido.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Deseja realmente cancelar este pedido?')">❌ Cancelar</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

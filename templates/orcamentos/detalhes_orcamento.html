@@ -1,0 +1,374 @@
+{% extends 'base.html' %}
+
+{% block title %}Orçamento #{{ orcamento.id }} - Guardião Aladin{% endblock %}
+{% block page_title %}Orçamento #{{ orcamento.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .card h2 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        color: #7f8c8d;
+        font-size: 12px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    .info-value {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 500;
+    }
+    .badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-rascunho { background: #95a5a6; color: white; }
+    .badge-enviado { background: #3498db; color: white; }
+    .badge-aprovado { background: #27ae60; color: white; }
+    .badge-expirado { background: #e74c3c; color: white; }
+    .badge-convertido { background: #9b59b6; color: white; }
+    .badge-cancelado { background: #7f8c8d; color: white; }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .table th,
+    .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    .table td {
+        color: #555;
+    }
+    .text-right {
+        text-align: right;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .btn-success {
+        background: #27ae60;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #229954;
+    }
+    .alert {
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .alert-warning {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    .alert-danger {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    @media (max-width: 968px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="color: #2c3e50; margin: 0;">Orçamento #{{ orcamento.id }}</h2>
+        <div style="margin-top: 5px; font-size: 14px; color: #7f8c8d;">
+            {{ orcamento.nome_responsavel }}
+        </div>
+    </div>
+    <div>
+        <a href="{% url 'orcamentos:imprimir_orcamento_pdf' orcamento.id %}" class="btn btn-success" target="_blank" style="margin-right: 10px;">📄 Imprimir PDF</a>
+        {% if orcamento.status != 'CONVERTIDO' and orcamento.status != 'CANCELADO' and orcamento.status != 'EXPIRADO' and not orcamento.pedido_gerado and itens %}
+        <form method="POST" action="{% url 'orcamentos:converter_orcamento_pedido' orcamento.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">🔄 Converter em Pedido</button>
+        </form>
+        {% endif %}
+        <a href="{% url 'orcamentos:lista_orcamentos' %}" class="btn btn-secondary">Voltar</a>
+    </div>
+</div>
+
+{% now "Y-m-d" as today_str %}
+{% if orcamento.status == 'EXPIRADO' %}
+<div class="alert alert-danger">
+    ⚠️ Este orçamento está <strong>EXPIRADO</strong> (validade: {{ orcamento.data_validade|date:"d/m/Y" }}).
+</div>
+{% elif orcamento.data_validade|date:"Y-m-d" < today_str %}
+<div class="alert alert-warning">
+    ⚠️ Este orçamento está próximo do vencimento (validade: {{ orcamento.data_validade|date:"d/m/Y" }}).
+</div>
+{% endif %}
+
+{% if orcamento.pedido_gerado %}
+<div class="alert alert-success">
+    ✅ Este orçamento foi convertido em <a href="/admin/vendas/pedidovenda/{{ orcamento.pedido_gerado.id }}/change/" target="_blank"><strong>Pedido #{{ orcamento.pedido_gerado.id }}</strong></a>.
+</div>
+{% endif %}
+
+<div class="content-grid">
+    <div>
+        <!-- Informações do Orçamento -->
+        <div class="card">
+            <h2>Informações do Orçamento</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span>
+                        {% if orcamento.status == 'RASCUNHO' %}
+                        <span class="badge badge-rascunho">{{ orcamento.get_status_display }}</span>
+                        {% elif orcamento.status == 'ENVIADO' %}
+                        <span class="badge badge-enviado">{{ orcamento.get_status_display }}</span>
+                        {% elif orcamento.status == 'APROVADO' %}
+                        <span class="badge badge-aprovado">{{ orcamento.get_status_display }}</span>
+                        {% elif orcamento.status == 'EXPIRADO' %}
+                        <span class="badge badge-expirado">{{ orcamento.get_status_display }}</span>
+                        {% elif orcamento.status == 'CONVERTIDO' %}
+                        <span class="badge badge-convertido">{{ orcamento.get_status_display }}</span>
+                        {% elif orcamento.status == 'CANCELADO' %}
+                        <span class="badge badge-cancelado">{{ orcamento.get_status_display }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Origem</span>
+                    <span class="info-value">{{ orcamento.get_origem_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Tipo de Operação</span>
+                    <span class="info-value">{{ orcamento.get_tipo_operacao_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Data de Emissão</span>
+                    <span class="info-value">{{ orcamento.data_emissao|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Data de Validade</span>
+                    <span class="info-value">
+                        {% now "Y-m-d" as today_str %}
+                        {% if orcamento.data_validade|date:"Y-m-d" < today_str %}
+                        <span style="color: #e74c3c;">{{ orcamento.data_validade|date:"d/m/Y" }} (Expirado)</span>
+                        {% else %}
+                        {{ orcamento.data_validade|date:"d/m/Y" }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Vendedor</span>
+                    <span class="info-value">{{ orcamento.vendedor.get_full_name|default:orcamento.vendedor.username }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contato -->
+        <div class="card">
+            <h2>Contato</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Nome do Responsável</span>
+                    <span class="info-value">{{ orcamento.nome_responsavel }}</span>
+                </div>
+                {% if orcamento.telefone_contato %}
+                <div class="info-item">
+                    <span class="info-label">Telefone</span>
+                    <span class="info-value">{{ orcamento.telefone_contato }}</span>
+                </div>
+                {% endif %}
+                {% if orcamento.whatsapp_contato %}
+                <div class="info-item">
+                    <span class="info-label">WhatsApp</span>
+                    <span class="info-value">{{ orcamento.whatsapp_contato }}</span>
+                </div>
+                {% endif %}
+                {% if orcamento.email_contato %}
+                <div class="info-item">
+                    <span class="info-label">E-mail</span>
+                    <span class="info-value">{{ orcamento.email_contato }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Cliente -->
+        {% if orcamento.cliente %}
+        <div class="card">
+            <h2>Cliente</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Nome/Razão Social</span>
+                    <span class="info-value">{{ orcamento.cliente.nome_razao_social }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Itens -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">Itens do Orçamento</h2>
+                {% if orcamento.status != 'CONVERTIDO' and orcamento.status != 'CANCELADO' and not orcamento.pedido_gerado %}
+                <a href="{% url 'orcamentos:adicionar_item_orcamento' orcamento.id %}" class="btn btn-success" style="padding: 8px 15px; font-size: 14px;">+ Adicionar Item</a>
+                {% endif %}
+            </div>
+            {% if itens %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Produto</th>
+                        <th>Descrição</th>
+                        <th>Classe Risco</th>
+                        <th>Quantidade</th>
+                        <th>Valor Unit.</th>
+                        <th>Desconto</th>
+                        <th>Total</th>
+                        {% if orcamento.status != 'CONVERTIDO' and orcamento.status != 'CANCELADO' and not orcamento.pedido_gerado %}
+                        <th>Ações</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.produto.codigo_interno|default:"-" }}</td>
+                        <td>{{ item.descricao_produto }}</td>
+                        <td>{{ item.classe_risco }}{% if item.subclasse_risco %} - {{ item.subclasse_risco }}{% endif %}</td>
+                        <td>{{ item.quantidade|floatformat:3 }}</td>
+                        <td class="text-right">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+                        <td class="text-right">R$ {{ item.desconto|floatformat:2 }}</td>
+                        <td class="text-right">R$ {{ item.valor_total|floatformat:2 }}</td>
+                        {% if orcamento.status != 'CONVERTIDO' and orcamento.status != 'CANCELADO' and not orcamento.pedido_gerado %}
+                        <td>
+                            <a href="{% url 'orcamentos:editar_item_orcamento' orcamento.id item.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">Editar</a>
+                            <a href="{% url 'orcamentos:remover_item_orcamento' orcamento.id item.id %}" class="btn" style="padding: 5px 10px; font-size: 12px; background: #e74c3c; color: white;" onclick="return confirm('Tem certeza que deseja remover este item?')">Remover</a>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                <p>Nenhum item adicionado ao orçamento.</p>
+                {% if orcamento.status != 'CONVERTIDO' and orcamento.status != 'CANCELADO' and not orcamento.pedido_gerado %}
+                <a href="{% url 'orcamentos:adicionar_item_orcamento' orcamento.id %}" class="btn btn-success" style="margin-top: 15px;">+ Adicionar Primeiro Item</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Observações -->
+        {% if orcamento.observacoes %}
+        <div class="card">
+            <h2>Observações</h2>
+            <p style="color: #555; line-height: 1.6;">{{ orcamento.observacoes }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <!-- Valores -->
+        <div class="card">
+            <h2>Valores</h2>
+            <div style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee;">
+                    <span style="color: #7f8c8d;">Total Bruto:</span>
+                    <span style="font-weight: 600;">R$ {{ orcamento.total_bruto|floatformat:2 }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee;">
+                    <span style="color: #7f8c8d;">Desconto Total:</span>
+                    <span style="font-weight: 600; color: #e74c3c;">- R$ {{ orcamento.desconto_total|floatformat:2 }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee;">
+                    <span style="color: #7f8c8d;">Acréscimo Total:</span>
+                    <span style="font-weight: 600; color: #27ae60;">+ R$ {{ orcamento.acrescimo_total|floatformat:2 }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 15px 0; margin-top: 10px; border-top: 2px solid #3498db;">
+                    <span style="font-size: 18px; font-weight: 600; color: #2c3e50;">Total Líquido:</span>
+                    <span style="font-size: 24px; font-weight: 600; color: #27ae60;">R$ {{ orcamento.total_liquido|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informações Adicionais -->
+        <div class="card">
+            <h2>Informações Adicionais</h2>
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">Empresa</span>
+                <span class="info-value">{{ orcamento.empresa.nome_fantasia }}</span>
+            </div>
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">Loja</span>
+                <span class="info-value">{{ orcamento.loja.nome }}</span>
+            </div>
+            {% if orcamento.condicao_pagamento_prevista %}
+            <div class="info-item" style="margin-bottom: 15px;">
+                <span class="info-label">Condição de Pagamento</span>
+                <span class="info-value">{{ orcamento.condicao_pagamento_prevista.nome }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Fornecedores - Guardião Aladin{% endblock %}
+{% block page_title %}Fornecedores{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-actions {
+        display: flex;
+        gap: 10px;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    .btn-info:hover {
+        background: #138496;
+    }
+    .filters {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .filter-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #555;
+        font-size: 12px;
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+    }
+    .fornecedores-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    thead {
+        background: #34495e;
+        color: white;
+    }
+    th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    tbody tr:hover {
+        background: #f8f9fa;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 8px;
+    }
+    .empty-state h3 {
+        color: #7f8c8d;
+        margin-bottom: 10px;
+    }
+    .empty-state p {
+        color: #95a5a6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Lista de Fornecedores</h2>
+    <div class="header-actions">
+        <a href="{% url 'pessoas:criar_fornecedor' %}" class="btn btn-primary">+ Novo Fornecedor</a>
+    </div>
+</div>
+
+<div class="filters">
+    <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" name="search" placeholder="Razão social, CNPJ ou e-mail" 
+               value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>Empresa</label>
+        <select name="empresa" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for empresa in empresas %}
+            <option value="{{ empresa.id }}" {% if filtros.empresa == empresa.id|stringformat:"s" %}selected{% endif %}>{{ empresa.nome_fantasia }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+        <a href="{% url 'pessoas:lista_fornecedores' %}" class="btn btn-info">Limpar</a>
+    </div>
+</div>
+
+{% if fornecedores %}
+<div class="fornecedores-table">
+    <table>
+        <thead>
+            <tr>
+                <th>Razão Social</th>
+                <th>Nome Fantasia</th>
+                <th>CNPJ</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Empresa</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fornecedor in fornecedores %}
+            <tr>
+                <td><strong>{{ fornecedor.razao_social }}</strong></td>
+                <td>{{ fornecedor.nome_fantasia|default:"-" }}</td>
+                <td>{{ fornecedor.cnpj|default:"-" }}</td>
+                <td>{{ fornecedor.email|default:"-" }}</td>
+                <td>{{ fornecedor.telefone|default:"-" }}</td>
+                <td>{{ fornecedor.empresa.nome_fantasia }}</td>
+                <td>
+                    <a href="{% url 'pessoas:detalhes_fornecedor' fornecedor.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>Nenhum fornecedor encontrado</h3>
+    <p>Comece criando um novo fornecedor ou ajuste os filtros.</p>
+</div>
+{% endif %}
+
+<script>
+    function filtrar() {
+        const params = new URLSearchParams();
+        const search = document.querySelector('input[name="search"]').value;
+        const empresa = document.querySelector('select[name="empresa"]').value;
+        
+        if (search) params.append('search', search);
+        if (empresa) params.append('empresa', empresa);
+        
+        window.location.href = '{% url "pessoas:lista_fornecedores" %}?' + params.toString();
+    }
+</script>
+{% endblock %}
+

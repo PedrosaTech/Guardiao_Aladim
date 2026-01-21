@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+
+{% block title %}Título #{{ titulo.id }} - Guardião Aladin{% endblock %}
+{% block page_title %}Título a Receber #{{ titulo.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========== CARDS ========== */
+    .card {
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    .card-title {
+        color: #2c3e50;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    /* ========== GRID ========== */
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+    }
+    
+    /* ========== INFO TABLE ========== */
+    .info-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .info-table tr {
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-table td {
+        padding: 12px 0;
+        vertical-align: top;
+    }
+    
+    .info-table td:first-child {
+        font-weight: 600;
+        color: #555;
+        width: 40%;
+    }
+    
+    .info-table td:last-child {
+        color: #2c3e50;
+    }
+    
+    /* ========== BADGES ========== */
+    .badge {
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .badge-aberto {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .badge-pago {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .badge-atrasado {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    /* ========== TABELA DE MOVIMENTOS ========== */
+    .movements-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .movements-table thead {
+        background: #34495e;
+        color: white;
+    }
+    
+    .movements-table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .movements-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .movements-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .value-entrada {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    
+    .value-saida {
+        color: #e74c3c;
+        font-weight: 600;
+    }
+    
+    /* ========== FORMULÁRIO DE BAIXA ========== */
+    .baixa-form {
+        position: sticky;
+        top: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+        font-size: 13px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+        box-sizing: border-box;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #27ae60;
+        box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+    }
+    
+    .form-group textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    /* ========== BOTÕES ========== */
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+        font-weight: 600;
+        text-align: center;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+    
+    .btn-success {
+        background: #27ae60;
+        color: white;
+        width: 100%;
+    }
+    
+    .btn-success:hover {
+        background: #229954;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-grid">
+    <div>
+        <!-- Informações do Título -->
+        <div class="card">
+            <div class="card-title">📋 Informações do Título</div>
+            <table class="info-table">
+                <tr>
+                    <td>Descrição:</td>
+                    <td>{{ titulo.descricao }}</td>
+                </tr>
+                <tr>
+                    <td>Cliente:</td>
+                    <td>{{ titulo.cliente.nome_razao_social }}</td>
+                </tr>
+                <tr>
+                    <td>Valor:</td>
+                    <td><strong style="font-size: 18px; color: #27ae60;">R$ {{ titulo.valor|floatformat:2 }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Vencimento:</td>
+                    <td>{{ titulo.data_vencimento|date:"d/m/Y" }}</td>
+                </tr>
+                <tr>
+                    <td>Status:</td>
+                    <td>
+                        {% if titulo.status == 'ABERTO' %}
+                            <span class="badge badge-aberto">Aberto</span>
+                        {% elif titulo.status == 'PAGO' %}
+                            <span class="badge badge-pago">Pago</span>
+                        {% elif titulo.status == 'ATRASADO' %}
+                            <span class="badge badge-atrasado">Atrasado</span>
+                        {% else %}
+                            <span class="badge">{{ titulo.status }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if titulo.numero_documento %}
+                <tr>
+                    <td>Número do Documento:</td>
+                    <td>{{ titulo.numero_documento }}</td>
+                </tr>
+                {% endif %}
+                {% if titulo.data_pagamento %}
+                <tr>
+                    <td>Data de Pagamento:</td>
+                    <td>{{ titulo.data_pagamento|date:"d/m/Y" }}</td>
+                </tr>
+                {% endif %}
+                {% if titulo.valor_recebido %}
+                <tr>
+                    <td>Valor Recebido:</td>
+                    <td><strong>R$ {{ titulo.valor_recebido|floatformat:2 }}</strong></td>
+                </tr>
+                {% endif %}
+            </table>
+            {% if titulo.status != 'PAGO' %}
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
+                <a href="{% url 'financeiro:titulo_receber_editar' titulo.pk %}" class="btn btn-primary">✏️ Editar Título</a>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Movimentos -->
+        {% if movimentos %}
+        <div class="card">
+            <div class="card-title">💸 Histórico de Movimentos</div>
+            <table class="movements-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Valor</th>
+                        <th>Descrição</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for movimento in movimentos %}
+                    <tr>
+                        <td>{{ movimento.data_movimento|date:"d/m/Y" }}</td>
+                        <td class="{% if movimento.tipo == 'ENTRADA' %}value-entrada{% else %}value-saida{% endif %}">
+                            {% if movimento.tipo == 'ENTRADA' %}+{% else %}-{% endif %} R$ {{ movimento.valor|floatformat:2 }}
+                        </td>
+                        <td>{{ movimento.observacao|default:movimento.categoria }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Formulário de Baixa -->
+    {% if titulo.status == 'ABERTO' %}
+    <div>
+        <div id="baixar" class="card baixa-form">
+            <div class="card-title">✅ Baixar Título</div>
+            <form method="post" action="{% url 'financeiro:titulo_receber_baixar' titulo.pk %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ form_baixa.data_pagamento.label_tag }}
+                    {{ form_baixa.data_pagamento }}
+                    {{ form_baixa.data_pagamento.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form_baixa.valor_pago.label_tag }}
+                    {{ form_baixa.valor_pago }}
+                    {{ form_baixa.valor_pago.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form_baixa.conta_destino.label_tag }}
+                    {{ form_baixa.conta_destino }}
+                    {{ form_baixa.conta_destino.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form_baixa.valor_juros.label_tag }}
+                    {{ form_baixa.valor_juros }}
+                    {{ form_baixa.valor_juros.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form_baixa.valor_multa.label_tag }}
+                    {{ form_baixa.valor_multa }}
+                    {{ form_baixa.valor_multa.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form_baixa.valor_desconto.label_tag }}
+                    {{ form_baixa.valor_desconto }}
+                    {{ form_baixa.valor_desconto.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form_baixa.observacoes.label_tag }}
+                    {{ form_baixa.observacoes }}
+                    {{ form_baixa.observacoes.errors }}
+                </div>
+                {% if form_baixa.non_field_errors %}
+                <div style="padding: 12px; background: #f8d7da; color: #721c24; border-radius: 6px; margin-bottom: 15px;">
+                    {{ form_baixa.non_field_errors }}
+                </div>
+                {% endif %}
+                <button type="submit" class="btn btn-success">💰 Baixar Título</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

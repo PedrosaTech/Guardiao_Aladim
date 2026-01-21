@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Orçamento #{{ orcamento.id }} - Guardião Aladin</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 10pt;
+            color: #000;
+            line-height: 1.4;
+        }
+        .header {
+            border-bottom: 3px solid #2c3e50;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .empresa-info {
+            flex: 1;
+        }
+        .empresa-info h1 {
+            font-size: 18pt;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .empresa-info p {
+            font-size: 9pt;
+            color: #555;
+        }
+        .orcamento-info {
+            text-align: right;
+        }
+        .orcamento-info h2 {
+            font-size: 16pt;
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+        .orcamento-info .numero {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .info-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .info-box h3 {
+            font-size: 10pt;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .info-box p {
+            font-size: 9pt;
+            margin: 3px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .itens {
+            margin-top: 20px;
+        }
+        .itens h3 {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            margin-bottom: 0;
+            font-size: 11pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0;
+        }
+        table th {
+            background: #f8f9fa;
+            padding: 8px;
+            text-align: left;
+            font-size: 9pt;
+            font-weight: bold;
+            border: 1px solid #ddd;
+        }
+        table td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            font-size: 9pt;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .totais {
+            margin-top: 20px;
+            border: 2px solid #2c3e50;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        .totais h3 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 11pt;
+            color: #2c3e50;
+            border-bottom: 1px solid #2c3e50;
+            padding-bottom: 5px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .total-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 12pt;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #2c3e50;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #2c3e50;
+            text-align: center;
+            font-size: 8pt;
+            color: #555;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+        .status-rascunho { background: #95a5a6; color: white; }
+        .status-enviado { background: #3498db; color: white; }
+        .status-aprovado { background: #27ae60; color: white; }
+        .status-expirado { background: #e74c3c; color: white; }
+        .status-convertido { background: #9b59b6; color: white; }
+        .observacoes {
+            margin-top: 20px;
+            padding: 10px;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 5px;
+        }
+        .observacoes h4 {
+            font-size: 10pt;
+            margin-bottom: 5px;
+            color: #856404;
+        }
+        .observacoes p {
+            font-size: 9pt;
+            color: #856404;
+        }
+        .validade {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .validade strong {
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-top">
+            <div class="empresa-info">
+                <h1>🛡️ Guardião Aladin</h1>
+                <p><strong>Empresa:</strong> {{ empresa.nome_fantasia }}</p>
+                <p><strong>CNPJ:</strong> {{ empresa.cnpj|default:"-" }}</p>
+                {% if empresa.inscricao_estadual %}
+                <p><strong>Inscrição Estadual:</strong> {{ empresa.inscricao_estadual }}</p>
+                {% endif %}
+                {% if empresa.logradouro %}
+                <p>{{ empresa.logradouro }}{% if empresa.numero %}, {{ empresa.numero }}{% endif %}{% if empresa.complemento %} - {{ empresa.complemento }}{% endif %}</p>
+                <p>{% if empresa.bairro %}{{ empresa.bairro }}{% endif %}{% if empresa.cidade %} - {{ empresa.cidade }}{% endif %}{% if empresa.uf %} / {{ empresa.uf }}{% endif %}{% if empresa.cep %} - CEP: {{ empresa.cep }}{% endif %}</p>
+                {% endif %}
+                {% if empresa.telefone %}
+                <p><strong>Telefone:</strong> {{ empresa.telefone }}</p>
+                {% endif %}
+                {% if empresa.email %}
+                <p><strong>E-mail:</strong> {{ empresa.email }}</p>
+                {% endif %}
+            </div>
+            <div class="orcamento-info">
+                <h2>ORÇAMENTO DE VENDA</h2>
+                <div class="numero">Nº {{ orcamento.id }}</div>
+                <p style="margin-top: 10px; font-size: 9pt;">
+                    <span class="status-badge status-{{ orcamento.status|lower }}">
+                        {{ orcamento.get_status_display }}
+                    </span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-box">
+                <h3>Dados do Orçamento</h3>
+                <p><span class="info-label">Data de Emissão:</span> {{ orcamento.data_emissao|date:"d/m/Y H:i" }}</p>
+                <p><span class="info-label">Data de Validade:</span> {{ orcamento.data_validade|date:"d/m/Y" }}</p>
+                <p><span class="info-label">Origem:</span> {{ orcamento.get_origem_display }}</p>
+                <p><span class="info-label">Tipo de Operação:</span> {{ orcamento.get_tipo_operacao_display }}</p>
+                <p><span class="info-label">Vendedor:</span> {{ orcamento.vendedor.get_full_name|default:orcamento.vendedor.username }}</p>
+            </div>
+            
+            <div class="info-box">
+                <h3>Dados do Cliente/Responsável</h3>
+                <p><span class="info-label">Nome:</span> {{ orcamento.nome_responsavel }}</p>
+                {% if orcamento.cliente %}
+                <p><span class="info-label">Cliente:</span> {{ orcamento.cliente.nome_razao_social }}</p>
+                <p><span class="info-label">CPF/CNPJ:</span> {{ orcamento.cliente.cpf_cnpj|default:"-" }}</p>
+                {% endif %}
+                {% if orcamento.telefone_contato %}
+                <p><span class="info-label">Telefone:</span> {{ orcamento.telefone_contato }}</p>
+                {% endif %}
+                {% if orcamento.email_contato %}
+                <p><span class="info-label">E-mail:</span> {{ orcamento.email_contato }}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if orcamento.condicao_pagamento_prevista %}
+        <div class="info-box" style="margin-top: 10px;">
+            <h3>Condição de Pagamento</h3>
+            <p>{{ orcamento.condicao_pagamento_prevista.nome }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="itens">
+        <h3>ITENS DO ORÇAMENTO</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">Item</th>
+                    <th style="width: 10%;">Código</th>
+                    <th style="width: 30%;">Descrição</th>
+                    <th style="width: 8%;">Classe Risco</th>
+                    <th style="width: 8%;">Quantidade</th>
+                    <th style="width: 10%;">Valor Unit.</th>
+                    <th style="width: 10%;">Desconto</th>
+                    <th style="width: 12%;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in itens %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>{{ item.produto.codigo_interno|default:"-" }}</td>
+                    <td>{{ item.descricao_produto }}</td>
+                    <td class="text-center">{{ item.classe_risco }}{% if item.subclasse_risco %} - {{ item.subclasse_risco }}{% endif %}</td>
+                    <td class="text-right">{{ item.quantidade|floatformat:3 }}</td>
+                    <td class="text-right">R$ {{ item.valor_unitario|floatformat:2 }}</td>
+                    <td class="text-right">R$ {{ item.desconto|floatformat:2 }}</td>
+                    <td class="text-right"><strong>R$ {{ item.valor_total|floatformat:2 }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 20px;">Nenhum item cadastrado</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="totais">
+        <h3>RESUMO FINANCEIRO</h3>
+        <div class="total-row">
+            <span>Total Bruto:</span>
+            <span>R$ {{ orcamento.total_bruto|floatformat:2 }}</span>
+        </div>
+        {% if orcamento.desconto_total > 0 %}
+        <div class="total-row">
+            <span>Desconto Total:</span>
+            <span style="color: #e74c3c;">- R$ {{ orcamento.desconto_total|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% if orcamento.acrescimo_total > 0 %}
+        <div class="total-row">
+            <span>Acréscimo Total:</span>
+            <span style="color: #27ae60;">+ R$ {{ orcamento.acrescimo_total|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        <div class="total-row">
+            <span>VALOR TOTAL DO ORÇAMENTO:</span>
+            <span style="color: #27ae60; font-size: 14pt;">R$ {{ orcamento.total_liquido|floatformat:2 }}</span>
+        </div>
+    </div>
+
+    {% if orcamento.observacoes %}
+    <div class="observacoes">
+        <h4>Observações:</h4>
+        <p>{{ orcamento.observacoes }}</p>
+    </div>
+    {% endif %}
+
+    <div class="validade">
+        <p><strong>⚠️ Este orçamento é válido até {{ orcamento.data_validade|date:"d/m/Y" }}</strong></p>
+        <p style="font-size: 8pt; margin-top: 5px;">Após esta data, o orçamento poderá sofrer alterações de preço.</p>
+    </div>
+
+    <div class="footer">
+        <p><strong>Guardião Aladin - ERP Pirotecnia</strong></p>
+        <p>Orçamento gerado em {{ orcamento.data_emissao|date:"d/m/Y H:i" }} | Loja: {{ loja.nome }}</p>
+        {% if orcamento.pedido_gerado %}
+        <p style="color: #9b59b6; font-weight: bold; margin-top: 10px;">
+            ✅ Este orçamento foi convertido em Pedido #{{ orcamento.pedido_gerado.id }}
+        </p>
+        {% endif %}
+    </div>
+</body>
+</html>
+

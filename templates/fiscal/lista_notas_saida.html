@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+
+{% block title %}Notas Fiscais de Saída - Guardião Aladin{% endblock %}
+{% block page_title %}Notas Fiscais de Saída{% endblock %}
+
+{% block extra_css %}
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            color: #7f8c8d;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-card .value {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 12px;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #138496;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .notas-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: #34495e;
+            color: white;
+        }
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .badge-nfe { background: #3498db; color: white; }
+        .badge-nfce { background: #9b59b6; color: white; }
+        .badge-rascunho { background: #95a5a6; color: white; }
+        .badge-processamento { background: #f39c12; color: white; }
+        .badge-autorizada { background: #27ae60; color: white; }
+        .badge-rejeitada { background: #e74c3c; color: white; }
+        .badge-cancelada { background: #7f8c8d; color: white; }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        .empty-state h3 {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: #95a5a6;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+        <div class="header">
+            <h1>📄 Notas Fiscais de Saída</h1>
+            <div style="margin-top: 10px; font-size: 14px; opacity: 0.9;">
+                NF-e e NFC-e emitidas
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total de Notas</h3>
+                <div class="value">{{ total_notas }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Valor Total</h3>
+                <div class="value">R$ {{ total_valor|floatformat:2 }}</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Buscar</label>
+                <input type="text" name="search" placeholder="Número, chave de acesso ou cliente" 
+                       value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+            </div>
+            <div class="filter-group">
+                <label>Tipo de Documento</label>
+                <select name="tipo_documento" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    <option value="NFE" {% if filtros.tipo_documento == 'NFE' %}selected{% endif %}>NF-e</option>
+                    <option value="NFCE" {% if filtros.tipo_documento == 'NFCE' %}selected{% endif %}>NFC-e</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Status</label>
+                <select name="status" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    <option value="RASCUNHO" {% if filtros.status == 'RASCUNHO' %}selected{% endif %}>Rascunho</option>
+                    <option value="EM_PROCESSAMENTO" {% if filtros.status == 'EM_PROCESSAMENTO' %}selected{% endif %}>Em Processamento</option>
+                    <option value="AUTORIZADA" {% if filtros.status == 'AUTORIZADA' %}selected{% endif %}>Autorizada</option>
+                    <option value="REJEITADA" {% if filtros.status == 'REJEITADA' %}selected{% endif %}>Rejeitada</option>
+                    <option value="CANCELADA" {% if filtros.status == 'CANCELADA' %}selected{% endif %}>Cancelada</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Loja</label>
+                <select name="loja" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}" {% if filtros.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Cliente</label>
+                <select name="cliente" onchange="filtrar()">
+                    <option value="">Todos</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if filtros.cliente == cliente.id|stringformat:"s" %}selected{% endif %}>{{ cliente.nome_razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Data Início</label>
+                <input type="date" name="data_inicio" value="{{ filtros.data_inicio }}" onchange="filtrar()">
+            </div>
+            <div class="filter-group">
+                <label>Data Fim</label>
+                <input type="date" name="data_fim" value="{{ filtros.data_fim }}" onchange="filtrar()">
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+                <a href="{% url 'fiscal:lista_notas_saida' %}" class="btn btn-info">Limpar</a>
+            </div>
+        </div>
+
+        {% if notas %}
+        <div class="notas-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Tipo</th>
+                        <th>Cliente</th>
+                        <th>Loja</th>
+                        <th>Evento</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        <th>Data Emissão</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nota in notas %}
+                    <tr>
+                        <td><strong>{{ nota.numero }}/{{ nota.serie }}</strong></td>
+                        <td>
+                            {% if nota.tipo_documento == 'NFE' %}
+                            <span class="badge badge-nfe">NF-e</span>
+                            {% else %}
+                            <span class="badge badge-nfce">NFC-e</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ nota.cliente.nome_razao_social }}</td>
+                        <td>{{ nota.loja.nome }}</td>
+                        <td>
+                            {% if nota.evento %}
+                            {{ nota.evento.nome_evento }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-right">R$ {{ nota.valor_total|floatformat:2 }}</td>
+                        <td>
+                            {% if nota.status == 'RASCUNHO' %}
+                            <span class="badge badge-rascunho">{{ nota.get_status_display }}</span>
+                            {% elif nota.status == 'EM_PROCESSAMENTO' %}
+                            <span class="badge badge-processamento">{{ nota.get_status_display }}</span>
+                            {% elif nota.status == 'AUTORIZADA' %}
+                            <span class="badge badge-autorizada">{{ nota.get_status_display }}</span>
+                            {% elif nota.status == 'REJEITADA' %}
+                            <span class="badge badge-rejeitada">{{ nota.get_status_display }}</span>
+                            {% elif nota.status == 'CANCELADA' %}
+                            <span class="badge badge-cancelada">{{ nota.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if nota.data_emissao %}
+                            {{ nota.data_emissao|date:"d/m/Y H:i" }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'fiscal:detalhes_nota_saida' nota.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                            {% if nota.status == 'AUTORIZADA' %}
+                            <a href="{% url 'fiscal:imprimir_nfe_pdf' nota.id %}" class="btn btn-success" style="padding: 5px 10px; font-size: 12px;" target="_blank">PDF</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhuma nota fiscal encontrada</h3>
+            <p>Ajuste os filtros ou crie uma nova nota fiscal.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filtrar() {
+            const params = new URLSearchParams();
+            const search = document.querySelector('input[name="search"]').value;
+            const tipo_documento = document.querySelector('select[name="tipo_documento"]').value;
+            const status = document.querySelector('select[name="status"]').value;
+            const loja = document.querySelector('select[name="loja"]').value;
+            const cliente = document.querySelector('select[name="cliente"]').value;
+            const data_inicio = document.querySelector('input[name="data_inicio"]').value;
+            const data_fim = document.querySelector('input[name="data_fim"]').value;
+            
+            if (search) params.append('search', search);
+            if (tipo_documento) params.append('tipo_documento', tipo_documento);
+            if (status) params.append('status', status);
+            if (loja) params.append('loja', loja);
+            if (cliente) params.append('cliente', cliente);
+            if (data_inicio) params.append('data_inicio', data_inicio);
+            if (data_fim) params.append('data_fim', data_fim);
+            
+            window.location.href = '{% url "fiscal:lista_notas_saida" %}?' + params.toString();
+        }
+    </script>
+{% endblock %}
+

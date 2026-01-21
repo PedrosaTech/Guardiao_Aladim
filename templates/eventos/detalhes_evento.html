@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ evento.nome_evento }} - Guardião Aladin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #138496;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .status-badge {
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .status-rascunho { background: #ecf0f1; color: #7f8c8d; }
+        .status-proposta_enviada { background: #fff3cd; color: #856404; }
+        .status-aprovado { background: #d4edda; color: #155724; }
+        .status-em_execucao { background: #cce5ff; color: #004085; }
+        .status-concluido { background: #d1ecf1; color: #0c5460; }
+        .status-cancelado { background: #f8d7da; color: #721c24; }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .actions-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+        }
+        .actions-card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .action-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .action-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .action-item h3 {
+            font-size: 14px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .action-item p {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .table td {
+            color: #555;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            .actions-card {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>{{ evento.nome_evento }}</h1>
+                <div style="margin-top: 5px; font-size: 14px; opacity: 0.9;">
+                    {{ evento.get_tipo_evento_display }} • {{ evento.data_evento|date:"d/m/Y" }}
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'eventos:lista_eventos' %}" class="btn btn-secondary">Voltar</a>
+                <a href="{% url 'eventos:proposta_evento' evento.id %}" class="btn btn-warning">Proposta</a>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div>
+                <!-- Informações Básicas -->
+                <div class="card">
+                    <h2>Informações do Evento</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Status</span>
+                            <span class="status-badge status-{{ evento.status|lower }}">{{ evento.get_status_display }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tipo</span>
+                            <span class="info-value">{{ evento.get_tipo_evento_display }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Data</span>
+                            <span class="info-value">{{ evento.data_evento|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Hora</span>
+                            <span class="info-value">{% if evento.hora_evento %}{{ evento.hora_evento|time:"H:i" }}{% else %}Não informada{% endif %}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Loja</span>
+                            <span class="info-value">{{ evento.loja.nome }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Empresa</span>
+                            <span class="info-value">{{ evento.empresa.nome_fantasia }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Responsável</span>
+                            <span class="info-value">{{ evento.responsavel_evento }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Telefone</span>
+                            <span class="info-value">{{ evento.telefone_responsavel }}</span>
+                        </div>
+                        {% if evento.estimativa_publico %}
+                        <div class="info-item">
+                            <span class="info-label">Estimativa de Público</span>
+                            <span class="info-value">{{ evento.estimativa_publico }} pessoas</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Endereço -->
+                <div class="card">
+                    <h2>Endereço do Evento</h2>
+                    <div class="info-value">
+                        {{ evento.endereco_logradouro }}, {{ evento.endereco_numero }}
+                        {% if evento.endereco_complemento %}- {{ evento.endereco_complemento }}{% endif %}<br>
+                        {{ evento.endereco_bairro }} - {{ evento.endereco_cidade }}/{{ evento.endereco_uf }}<br>
+                        CEP: {{ evento.endereco_cep }}
+                    </div>
+                </div>
+
+                <!-- Relacionamentos -->
+                <div class="card">
+                    <h2>Relacionamentos</h2>
+                    <div class="info-grid">
+                        {% if evento.lead %}
+                        <div class="info-item">
+                            <span class="info-label">Lead</span>
+                            <span class="info-value">{{ evento.lead.nome }} ({{ evento.lead.get_status_display }})</span>
+                        </div>
+                        {% endif %}
+                        {% if evento.cliente %}
+                        <div class="info-item">
+                            <span class="info-label">Cliente</span>
+                            <span class="info-value">{{ evento.cliente.nome_razao_social }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Pedido de Venda -->
+                <div class="card">
+                    <h2>Pedido de Venda</h2>
+                    {% if pedido %}
+                    <div style="margin-bottom: 15px;">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Número</span>
+                                <span class="info-value">#{{ pedido.id }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Status</span>
+                                <span class="badge badge-{% if pedido.status == 'FATURADO' %}success{% elif pedido.status == 'ABERTO' %}info{% else %}warning{% endif %}">{{ pedido.get_status_display }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Valor Total</span>
+                                <span class="info-value">R$ {{ pedido.valor_total|floatformat:2 }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Data de Emissão</span>
+                                <span class="info-value">{{ pedido.data_emissao|date:"d/m/Y H:i" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if itens_pedido %}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                                <th>Preço Unit.</th>
+                                <th>Desconto</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens_pedido %}
+                            <tr>
+                                <td>{{ item.produto.descricao }}</td>
+                                <td>{{ item.quantidade }}</td>
+                                <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                                <td>R$ {{ item.desconto|floatformat:2 }}</td>
+                                <td><strong>R$ {{ item.total|floatformat:2 }}</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">
+                        <p>Nenhum item adicionado ao pedido ainda.</p>
+                        <a href="{% url 'eventos:proposta_evento' evento.id %}" class="btn btn-primary" style="margin-top: 15px;">Adicionar Itens</a>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="empty-state">
+                        <p>Nenhum pedido associado a este evento.</p>
+                        <form method="post" action="{% url 'eventos:gerar_pedido_evento' evento.id %}" style="margin-top: 15px;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">Gerar Pedido de Venda do Evento</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Notas Fiscais -->
+                {% if notas_fiscais %}
+                <div class="card">
+                    <h2>Notas Fiscais</h2>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Série</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Data Emissão</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nota in notas_fiscais %}
+                            <tr>
+                                <td>{{ nota.numero }}</td>
+                                <td>{{ nota.serie }}</td>
+                                <td>R$ {{ nota.valor_total|floatformat:2 }}</td>
+                                <td><span class="badge badge-{% if nota.status == 'AUTORIZADA' %}success{% elif nota.status == 'RASCUNHO' %}warning{% else %}info{% endif %}">{{ nota.get_status_display }}</span></td>
+                                <td>{{ nota.data_emissao|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Observações -->
+                {% if evento.observacoes %}
+                <div class="card">
+                    <h2>Observações</h2>
+                    <p style="color: #555; line-height: 1.6;">{{ evento.observacoes }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Sidebar de Ações -->
+            <div>
+                <div class="actions-card">
+                    <h2>Ações Rápidas</h2>
+                    <div class="action-list">
+                        {% if not pedido %}
+                        <div class="action-item">
+                            <h3>Gerar Pedido de Venda</h3>
+                            <p>Cria um novo pedido de venda do tipo EVENTO para este evento.</p>
+                            <form method="post" action="{% url 'eventos:gerar_pedido_evento' evento.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success" style="width: 100%;">Gerar Pedido de Venda do Evento</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div class="action-item">
+                            <h3>Editar Proposta</h3>
+                            <p>Adicione ou remova itens da proposta do evento.</p>
+                            <a href="{% url 'eventos:proposta_evento' evento.id %}" class="btn btn-warning" style="width: 100%; display: block; text-align: center;">Abrir Proposta</a>
+                        </div>
+                        {% endif %}
+
+                        {% if pedido and pedido.status != 'FATURADO' %}
+                        <div class="action-item">
+                            <h3>Gerar NF-e Rascunho</h3>
+                            <p>Cria uma NF-e em rascunho baseada no pedido do evento.</p>
+                            <form method="post" action="{% url 'eventos:gerar_nfe_evento' evento.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">Gerar NF-e Rascunho</button>
+                            </form>
+                        </div>
+                        {% endif %}
+
+                        {% if pedido and pedido.status == 'ORCAMENTO' and itens_pedido %}
+                        <div class="action-item">
+                            <h3>Faturar Evento</h3>
+                            <p>Finaliza o evento, criando NF-e e atualizando status.</p>
+                            <button onclick="faturarEvento({{ evento.id }})" class="btn btn-success" style="width: 100%;">Faturar</button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função para faturar evento (mantida para compatibilidade)
+        function faturarEvento(eventoId) {
+            if (!confirm('Deseja faturar este evento? Isso criará a NF-e e finalizará o processo.')) return;
+            
+            fetch(`/eventos/faturar/${eventoId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    alert(data.mensagem);
+                    window.location.reload();
+                } else {
+                    alert('Erro: ' + (data.erro || 'Erro desconhecido'));
+                }
+            })
+            .catch(error => {
+                alert('Erro ao faturar evento: ' + error);
+            });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
+

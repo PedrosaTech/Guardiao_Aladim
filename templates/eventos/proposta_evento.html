@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposta de Evento - {{ evento.nome_evento }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .info-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .info-item strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .busca-produto {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .busca-produto input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .busca-produto input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #34495e;
+            color: white;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .total-card {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .status-rascunho { background: #95a5a6; color: white; }
+        .status-proposta_enviada { background: #f39c12; color: white; }
+        .status-aprovado { background: #3498db; color: white; }
+        .status-em_execucao { background: #9b59b6; color: white; }
+        .status-concluido { background: #27ae60; color: white; }
+        .status-cancelado { background: #e74c3c; color: white; }
+        .mensagem {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .mensagem.sucesso {
+            background: #27ae60;
+            color: white;
+        }
+        .mensagem.erro {
+            background: #e74c3c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📋 Proposta de Evento: {{ evento.nome_evento }}</h1>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Tipo:</strong> {{ evento.get_tipo_evento_display }}
+                    </div>
+                    <div class="info-item">
+                        <strong>Data:</strong> {{ evento.data_evento|date:"d/m/Y" }}
+                        {% if evento.hora_evento %} às {{ evento.hora_evento|time:"H:i" }}{% endif %}
+                    </div>
+                    <div class="info-item">
+                        <strong>Status:</strong>
+                        <span class="status-badge status-{{ evento.status|lower }}">{{ evento.get_status_display }}</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Responsável:</strong> {{ evento.responsavel_evento }}
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'eventos:detalhes_evento' evento.id %}" class="btn btn-secondary">Voltar</a>
+            </div>
+        </div>
+        
+        <div id="mensagem"></div>
+        
+        <div class="card">
+            <h2>🔍 Adicionar Produto à Proposta</h2>
+            <div class="busca-produto">
+                <input 
+                    type="text" 
+                    id="busca-produto" 
+                    placeholder="Digite código ou descrição do produto"
+                    autocomplete="off"
+                >
+                <input 
+                    type="number" 
+                    id="quantidade-produto" 
+                    placeholder="Qtd" 
+                    value="1" 
+                    min="0.001" 
+                    step="0.001"
+                    style="width: 100px;"
+                >
+                <input 
+                    type="number" 
+                    id="preco-produto" 
+                    placeholder="Preço" 
+                    min="0.01" 
+                    step="0.01"
+                    style="width: 150px;"
+                >
+                <button class="btn btn-primary" onclick="adicionarProduto()">Adicionar</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>📦 Itens da Proposta</h2>
+            <table id="tabela-itens">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Quantidade</th>
+                        <th>Preço Unit.</th>
+                        <th>Desconto</th>
+                        <th>Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-itens">
+                    {% for item in itens %}
+                    <tr data-item-id="{{ item.id }}">
+                        <td>{{ item.produto.codigo_interno }}</td>
+                        <td>{{ item.produto.descricao }}</td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                        <td>R$ {{ item.desconto|floatformat:2 }}</td>
+                        <td>R$ {{ item.total|floatformat:2 }}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="removerItem({{ item.id }})">Remover</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #95a5a6;">
+                            Nenhum item adicionado. Busque e adicione produtos à proposta.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="total-card" id="total-pedido">
+            Total da Proposta: R$ {{ pedido.valor_total|floatformat:2 }}
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-success" onclick="faturarEvento()" style="flex: 1; padding: 15px; font-size: 18px;">
+                ✅ Faturar Evento
+            </button>
+            <a href="/admin/eventos/eventovenda/{{ evento.id }}/change/" class="btn btn-primary" style="flex: 1; padding: 15px; font-size: 18px; text-align: center; text-decoration: none;">
+                ✏️ Editar Evento
+            </a>
+        </div>
+    </div>
+    
+    <script>
+        const eventoId = {{ evento.id }};
+        const buscaInput = document.getElementById('busca-produto');
+        const qtdInput = document.getElementById('quantidade-produto');
+        const precoInput = document.getElementById('preco-produto');
+        
+        // Busca produtos enquanto digita
+        let timeoutBusca = null;
+        buscaInput.addEventListener('input', function() {
+            if (timeoutBusca) clearTimeout(timeoutBusca);
+            timeoutBusca = setTimeout(buscarProdutos, 300);
+        });
+        
+        function buscarProdutos() {
+            const termo = buscaInput.value.trim();
+            if (termo.length < 2) return;
+            
+            fetch(`/pdv/buscar-produto/?q=${encodeURIComponent(termo)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.produtos && data.produtos.length > 0) {
+                        const produto = data.produtos[0];
+                        buscaInput.value = produto.codigo_interno + ' - ' + produto.descricao;
+                        buscaInput.dataset.produtoId = produto.id;
+                        if (!precoInput.value) {
+                            precoInput.value = produto.preco_venda_sugerido;
+                        }
+                    }
+                });
+        }
+        
+        function adicionarProduto() {
+            const produtoId = buscaInput.dataset.produtoId;
+            if (!produtoId) {
+                mostrarMensagem('Selecione um produto primeiro', 'erro');
+                return;
+            }
+            
+            const quantidade = parseFloat(qtdInput.value) || 1;
+            const preco = parseFloat(precoInput.value) || 0;
+            
+            const data = {
+                produto_id: produtoId,
+                quantidade: quantidade,
+                preco_unitario: preco,
+                desconto: 0
+            };
+            
+            fetch(`/eventos/proposta/${eventoId}/adicionar-item/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    location.reload();
+                } else {
+                    mostrarMensagem(data.erro || 'Erro ao adicionar item', 'erro');
+                }
+            })
+            .catch(error => {
+                mostrarMensagem('Erro ao adicionar item', 'erro');
+            });
+        }
+        
+        function removerItem(itemId) {
+            if (!confirm('Deseja remover este item?')) return;
+            
+            fetch(`/eventos/proposta/${eventoId}/remover-item/${itemId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    location.reload();
+                } else {
+                    mostrarMensagem(data.erro || 'Erro ao remover item', 'erro');
+                }
+            });
+        }
+        
+        function faturarEvento() {
+            if (!confirm('Deseja faturar este evento? Isso criará a NF-e e finalizará o processo.')) return;
+            
+            fetch(`/eventos/faturar/${eventoId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sucesso) {
+                    mostrarMensagem('Evento faturado com sucesso!', 'sucesso');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    mostrarMensagem(data.erro || 'Erro ao faturar evento', 'erro');
+                }
+            });
+        }
+        
+        function mostrarMensagem(texto, tipo) {
+            const div = document.getElementById('mensagem');
+            div.className = `mensagem ${tipo}`;
+            div.textContent = texto;
+            setTimeout(() => {
+                div.textContent = '';
+                div.className = '';
+            }, 5000);
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Enter no campo de busca adiciona produto
+        buscaInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                adicionarProduto();
+            }
+        });
+    </script>
+</body>
+</html>
+

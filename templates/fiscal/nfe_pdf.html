@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NF-e {{ nota.numero }}/{{ nota.serie }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 10pt;
+            color: #000;
+            line-height: 1.2;
+        }
+        
+        .container {
+            width: 100%;
+        }
+        
+        /* Cabeçalho SEFAZ */
+        .cabecalho-sefaz {
+            border: 2px solid #000;
+            padding: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            background: #f0f0f0;
+        }
+        
+        .cabecalho-sefaz h1 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .cabecalho-sefaz p {
+            font-size: 9pt;
+            margin: 2px 0;
+        }
+        
+        /* Informações da NF-e */
+        .info-nfe {
+            border: 2px solid #000;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .info-nfe-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .info-nfe-header h2 {
+            font-size: 12pt;
+            font-weight: bold;
+        }
+        
+        .info-nfe-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 9pt;
+        }
+        
+        .info-item {
+            margin-bottom: 5px;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
+        /* Emitente e Destinatário */
+        .dados-emissao {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .box {
+            border: 1px solid #000;
+            padding: 8px;
+        }
+        
+        .box h3 {
+            font-size: 10pt;
+            font-weight: bold;
+            border-bottom: 1px solid #000;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+        }
+        
+        .box-content {
+            font-size: 9pt;
+        }
+        
+        .box-content p {
+            margin: 3px 0;
+        }
+        
+        /* Itens */
+        .itens {
+            margin-bottom: 10px;
+        }
+        
+        .itens h3 {
+            font-size: 10pt;
+            font-weight: bold;
+            border: 1px solid #000;
+            padding: 5px;
+            background: #f0f0f0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            margin-top: 5px;
+        }
+        
+        table th,
+        table td {
+            border: 1px solid #000;
+            padding: 4px;
+            text-align: left;
+        }
+        
+        table th {
+            background: #f0f0f0;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        table td {
+            text-align: right;
+        }
+        
+        table td:first-child {
+            text-align: left;
+        }
+        
+        /* Totais */
+        .totais {
+            border: 1px solid #000;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .totais h3 {
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px dotted #000;
+        }
+        
+        .total-row:last-child {
+            border-bottom: none;
+            border-top: 2px solid #000;
+            font-weight: bold;
+            font-size: 11pt;
+            margin-top: 5px;
+            padding-top: 5px;
+        }
+        
+        /* Rodapé */
+        .rodape {
+            border: 1px solid #000;
+            padding: 8px;
+            margin-top: 10px;
+            font-size: 8pt;
+            text-align: center;
+        }
+        
+        .chave-acesso {
+            font-weight: bold;
+            font-size: 9pt;
+            margin: 5px 0;
+            word-break: break-all;
+        }
+        
+        .qrcode-placeholder {
+            border: 1px dashed #000;
+            padding: 20px;
+            text-align: center;
+            margin: 10px 0;
+            font-size: 8pt;
+            color: #666;
+        }
+        
+        .observacoes {
+            margin-top: 10px;
+            padding: 5px;
+            border: 1px solid #000;
+            font-size: 8pt;
+        }
+        
+        .observacoes h4 {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Cabeçalho SEFAZ -->
+        <div class="cabecalho-sefaz">
+            <h1>NOTA FISCAL ELETRÔNICA</h1>
+            <p>Nº {{ nota.numero }} | Série {{ nota.serie }}</p>
+            {% if nota.chave_acesso %}
+            <p>Chave de Acesso: {{ nota.chave_acesso|slice:":4" }} {{ nota.chave_acesso|slice:"4:8" }} {{ nota.chave_acesso|slice:"8:12" }} {{ nota.chave_acesso|slice:"12:16" }} {{ nota.chave_acesso|slice:"16:20" }} {{ nota.chave_acesso|slice:"20:24" }} {{ nota.chave_acesso|slice:"24:28" }} {{ nota.chave_acesso|slice:"28:32" }} {{ nota.chave_acesso|slice:"32:36" }} {{ nota.chave_acesso|slice:"36:40" }} {{ nota.chave_acesso|slice:"40:44" }}</p>
+            {% else %}
+            <p style="color: #999;">Chave de Acesso: A ser gerada após autorização</p>
+            {% endif %}
+            <p>Status: {{ nota.get_status_display }}</p>
+        </div>
+        
+        <!-- Informações da NF-e -->
+        <div class="info-nfe">
+            <div class="info-nfe-header">
+                <h2>DANFE</h2>
+                <div>
+                    <strong>Data de Emissão:</strong> 
+                    {% if nota.data_emissao %}{{ nota.data_emissao|date:"d/m/Y H:i:s" }}{% else %}Não informada{% endif %}
+                </div>
+            </div>
+            <div class="info-nfe-content">
+                <div class="info-item">
+                    <span class="info-label">Natureza da Operação:</span>
+                    <span>Venda</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Forma de Pagamento:</span>
+                    {% if pedido and pedido.condicao_pagamento %}
+                    <span>{{ pedido.condicao_pagamento.nome }}</span>
+                    {% else %}
+                    <span>À vista</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emitente e Destinatário -->
+        <div class="dados-emissao">
+            <!-- Emitente -->
+            <div class="box">
+                <h3>EMITENTE</h3>
+                <div class="box-content">
+                    <p><strong>{{ empresa.razao_social }}</strong></p>
+                    <p>{{ empresa.nome_fantasia }}</p>
+                    <p>CNPJ: {{ empresa.cnpj }}</p>
+                    {% if empresa.inscricao_estadual %}
+                    <p>IE: {{ empresa.inscricao_estadual }}</p>
+                    {% endif %}
+                    {% if loja.logradouro %}
+                    <p>{{ loja.logradouro }}, {{ loja.numero }}</p>
+                    {% if loja.complemento %}<p>{{ loja.complemento }}</p>{% endif %}
+                    <p>{{ loja.bairro }} - {{ loja.cidade }}/{{ loja.uf }}</p>
+                    <p>CEP: {{ loja.cep }}</p>
+                    {% elif empresa.logradouro %}
+                    <p>{{ empresa.logradouro }}, {{ empresa.numero }}</p>
+                    {% if empresa.complemento %}<p>{{ empresa.complemento }}</p>{% endif %}
+                    <p>{{ empresa.bairro }} - {{ empresa.cidade }}/{{ empresa.uf }}</p>
+                    <p>CEP: {{ empresa.cep }}</p>
+                    {% endif %}
+                    {% if loja.telefone or empresa.telefone %}
+                    <p>Tel: {{ loja.telefone|default:empresa.telefone }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Destinatário -->
+            <div class="box">
+                <h3>DESTINATÁRIO</h3>
+                <div class="box-content">
+                    <p><strong>{{ cliente.nome_razao_social }}</strong></p>
+                    {% if cliente.apelido_nome_fantasia %}
+                    <p>{{ cliente.apelido_nome_fantasia }}</p>
+                    {% endif %}
+                    <p>{% if cliente.tipo_pessoa == 'PF' %}CPF{% else %}CNPJ{% endif %}: {{ cliente.cpf_cnpj }}</p>
+                    {% if cliente.rg_inscricao_estadual %}
+                    <p>{% if cliente.tipo_pessoa == 'PF' %}RG{% else %}IE{% endif %}: {{ cliente.rg_inscricao_estadual }}</p>
+                    {% endif %}
+                    {% if cliente.logradouro %}
+                    <p>{{ cliente.logradouro }}, {{ cliente.numero }}</p>
+                    {% if cliente.complemento %}<p>{{ cliente.complemento }}</p>{% endif %}
+                    <p>{{ cliente.bairro }} - {{ cliente.cidade }}/{{ cliente.uf }}</p>
+                    <p>CEP: {{ cliente.cep }}</p>
+                    {% endif %}
+                    {% if cliente.telefone %}
+                    <p>Tel: {{ cliente.telefone }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Itens -->
+        <div class="itens">
+            <h3>DADOS DOS PRODUTOS / SERVIÇOS</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 4%;">Item</th>
+                        <th style="width: 8%;">Código</th>
+                        <th style="width: 25%;">Descrição</th>
+                        <th style="width: 7%;">NCM</th>
+                        <th style="width: 5%;">CFOP</th>
+                        <th style="width: 4%;">CST</th>
+                        <th style="width: 4%;">Un</th>
+                        <th style="width: 6%;">Qtde</th>
+                        <th style="width: 8%;">Vl Unit</th>
+                        <th style="width: 8%;">Vl Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.produto.codigo_interno|default:"-" }}</td>
+                        <td>{{ item.produto.descricao }}</td>
+                        <td>{{ item.produto.ncm|default:"-" }}</td>
+                        <td>{{ item.produto.cfop_venda_dentro_uf|default:"-" }}</td>
+                        <td>{{ item.produto.csosn_cst|default:"-" }}</td>
+                        <td>{{ item.produto.unidade_comercial|default:"UN" }}</td>
+                        <td>{{ item.quantidade|floatformat:3 }}</td>
+                        <td>R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                        <td>R$ {{ item.total|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 10px;">Nenhum item cadastrado</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Totais -->
+        <div class="totais">
+            <h3>CÁLCULO DO IMPOSTO</h3>
+            {% if impostos.is_simples_nacional %}
+            <div style="background: #fff3cd; padding: 10px; margin-bottom: 10px; border: 1px solid #ffc107; border-radius: 4px;">
+                <strong>⚠️ SIMPLES NACIONAL:</strong> Os impostos (ICMS, PIS, COFINS) estão embutidos no preço e são calculados mensalmente sobre a receita bruta. 
+                Os valores abaixo são apenas informativos para fins de documentação fiscal.
+            </div>
+            {% endif %}
+            <div class="total-row">
+                <span>Base de Cálculo do ICMS:</span>
+                <span>R$ {{ impostos.base_icms|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do ICMS:</span>
+                <span>R$ {{ impostos.valor_icms|floatformat:2 }}</span>
+                {% if impostos.is_simples_nacional %}
+                <span style="font-size: 8pt; color: #666; margin-left: 5px;">(embutido no Simples)</span>
+                {% endif %}
+            </div>
+            {% if impostos.base_icms_st > 0 %}
+            <div class="total-row">
+                <span>Base de Cálculo do ICMS ST:</span>
+                <span>R$ {{ impostos.base_icms_st|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do ICMS ST:</span>
+                <span>R$ {{ impostos.valor_icms_st|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="total-row">
+                <span>Base de Cálculo do PIS:</span>
+                <span>R$ {{ impostos.base_pis|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do PIS:</span>
+                <span>R$ {{ impostos.valor_pis|floatformat:2 }}</span>
+                {% if impostos.is_simples_nacional %}
+                <span style="font-size: 8pt; color: #666; margin-left: 5px;">(embutido no Simples)</span>
+                {% endif %}
+            </div>
+            <div class="total-row">
+                <span>Base de Cálculo do COFINS:</span>
+                <span>R$ {{ impostos.base_cofins|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do COFINS:</span>
+                <span>R$ {{ impostos.valor_cofins|floatformat:2 }}</span>
+                {% if impostos.is_simples_nacional %}
+                <span style="font-size: 8pt; color: #666; margin-left: 5px;">(embutido no Simples)</span>
+                {% endif %}
+            </div>
+            {% if impostos.base_ipi > 0 %}
+            <div class="total-row">
+                <span>Base de Cálculo do IPI:</span>
+                <span>R$ {{ impostos.base_ipi|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do IPI:</span>
+                <span>R$ {{ impostos.valor_ipi|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="total-row">
+                <span>Valor Total dos Produtos:</span>
+                <span>R$ {{ impostos.valor_produtos|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do Frete:</span>
+                <span>R$ {{ impostos.valor_frete|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor do Seguro:</span>
+                <span>R$ {{ impostos.valor_seguro|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Desconto:</span>
+                <span>R$ {{ impostos.valor_desconto|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Outras Despesas Acessórias:</span>
+                <span>R$ {{ impostos.valor_outras_despesas|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span>Valor Total da NF-e:</span>
+                <span>R$ {{ nota.valor_total|floatformat:2 }}</span>
+            </div>
+        </div>
+        
+        <!-- Observações -->
+        {% if pedido and pedido.observacoes %}
+        <div class="observacoes">
+            <h4>OBSERVAÇÕES:</h4>
+            <p>{{ pedido.observacoes }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Rodapé -->
+        <div class="rodape">
+            {% if nota.chave_acesso %}
+            <div class="chave-acesso">
+                Chave de Acesso: {{ nota.chave_acesso }}
+            </div>
+            {% endif %}
+            
+            <div class="qrcode-placeholder">
+                [QR Code será gerado após autorização pela SEFAZ]
+            </div>
+            
+            <p>
+                <strong>Consulte pela Chave de Acesso em:</strong><br>
+                http://www.sefaz.ba.gov.br ou http://www.nfe.fazenda.gov.br/portal
+            </p>
+            
+            <p style="margin-top: 10px; font-size: 7pt;">
+                Documento gerado em {{ "now"|date:"d/m/Y H:i:s" }} pelo sistema Guardião Aladin
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

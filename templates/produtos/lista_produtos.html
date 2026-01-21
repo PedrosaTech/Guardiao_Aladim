@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+
+{% block title %}Produtos - Guardião Aladin{% endblock %}
+{% block page_title %}Produtos{% endblock %}
+
+{% block extra_css %}
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #138496;
+        }
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .filter-actions {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .products-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: #34495e;
+            color: white;
+        }
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .badge-risco-1-1g { background: #e74c3c; color: white; }
+        .badge-risco-1-2g { background: #e67e22; color: white; }
+        .badge-risco-1-3g { background: #f39c12; color: white; }
+        .badge-risco-1-4g { background: #27ae60; color: white; }
+        .badge-risco-1-4s { background: #2ecc71; color: white; }
+        .badge-risco-outra { background: #95a5a6; color: white; }
+        .badge-restricao {
+            background: #e74c3c;
+            color: white;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        .empty-state h3 {
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .empty-state p {
+            color: #95a5a6;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+        <div class="header">
+            <h1>📦 Produtos</h1>
+            <div class="header-actions">
+                <a href="{% url 'produtos:criar_produto' %}" class="btn btn-primary">+ Novo Produto</a>
+            </div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Buscar</label>
+                <input type="text" name="search" placeholder="Código, descrição ou NCM" 
+                       value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+            </div>
+            <div class="filter-group">
+                <label>Categoria</label>
+                <select name="categoria" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    {% for categoria in categorias %}
+                    <option value="{{ categoria.id }}" {% if filtros.categoria == categoria.id|stringformat:"s" %}selected{% endif %}>{{ categoria.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Classe de Risco</label>
+                <select name="classe_risco" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    {% for value, label in classe_risco_choices %}
+                    <option value="{{ value }}" {% if filtros.classe_risco == value %}selected{% endif %}>{{ value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Empresa</label>
+                <select name="empresa" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    {% for empresa in empresas %}
+                    <option value="{{ empresa.id }}" {% if filtros.empresa == empresa.id|stringformat:"s" %}selected{% endif %}>{{ empresa.nome_fantasia }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Restrição Exército</label>
+                <select name="restricao_exercito" onchange="filtrar()">
+                    <option value="">Todas</option>
+                    <option value="sim" {% if filtros.restricao_exercito == 'sim' %}selected{% endif %}>Sim</option>
+                    <option value="nao" {% if filtros.restricao_exercito == 'nao' %}selected{% endif %}>Não</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+                <a href="{% url 'produtos:lista_produtos' %}" class="btn btn-info">Limpar</a>
+            </div>
+        </div>
+
+        {% if produtos %}
+        <div class="products-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Classe Risco</th>
+                        <th>NCM</th>
+                        <th>Preço</th>
+                        <th>Restrição</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for produto in produtos %}
+                    <tr>
+                        <td><strong>{{ produto.codigo_interno|default:"-" }}</strong></td>
+                        <td>{{ produto.descricao }}</td>
+                        <td>{{ produto.categoria.nome }}</td>
+                        <td>
+                            {% if produto.classe_risco == '1.1G' %}
+                            <span class="badge badge-risco-1-1g">{{ produto.get_classe_risco_display }}</span>
+                            {% elif produto.classe_risco == '1.2G' %}
+                            <span class="badge badge-risco-1-2g">{{ produto.get_classe_risco_display }}</span>
+                            {% elif produto.classe_risco == '1.3G' %}
+                            <span class="badge badge-risco-1-3g">{{ produto.get_classe_risco_display }}</span>
+                            {% elif produto.classe_risco == '1.4G' %}
+                            <span class="badge badge-risco-1-4g">{{ produto.get_classe_risco_display }}</span>
+                            {% elif produto.classe_risco == '1.4S' %}
+                            <span class="badge badge-risco-1-4s">{{ produto.get_classe_risco_display }}</span>
+                            {% else %}
+                            <span class="badge badge-risco-outra">{{ produto.get_classe_risco_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ produto.ncm|default:"-" }}</td>
+                        <td class="text-right">R$ {{ produto.preco_venda_sugerido|floatformat:2 }}</td>
+                        <td class="text-center">
+                            {% if produto.possui_restricao_exercito %}
+                            <span class="badge badge-restricao">⚠️ Sim</span>
+                            {% else %}
+                            <span>-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'produtos:detalhes_produto' produto.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhum produto encontrado</h3>
+            <p>Comece criando um novo produto ou ajuste os filtros.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function filtrar() {
+            const params = new URLSearchParams();
+            const search = document.querySelector('input[name="search"]').value;
+            const categoria = document.querySelector('select[name="categoria"]').value;
+            const classe_risco = document.querySelector('select[name="classe_risco"]').value;
+            const empresa = document.querySelector('select[name="empresa"]').value;
+            const restricao = document.querySelector('select[name="restricao_exercito"]').value;
+            
+            if (search) params.append('search', search);
+            if (categoria) params.append('categoria', categoria);
+            if (classe_risco) params.append('classe_risco', classe_risco);
+            if (empresa) params.append('empresa', empresa);
+            if (restricao) params.append('restricao_exercito', restricao);
+            
+            window.location.href = '{% url "produtos:lista_produtos" %}?' + params.toString();
+        }
+    </script>
+{% endblock %}
+

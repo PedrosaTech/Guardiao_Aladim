@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+
+{% block title %}Fluxo de Caixa - Guardião Aladin{% endblock %}
+{% block page_title %}Relatório de Fluxo de Caixa{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    /* ========== HEADER COM GRADIENTE ========== */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        animation: fadeInDown 0.6s ease-out;
+    }
+    
+    .page-header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* ========== FILTROS ========== */
+    .filters-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    .filters-title {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+    
+    .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+    }
+    
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+    }
+    
+    /* ========== GRÁFICO ========== */
+    .chart-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+        animation: fadeInUp 0.8s ease-out;
+        transition: transform 0.3s;
+    }
+    
+    .chart-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    .chart-title {
+        color: #2c3e50;
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+    }
+    
+    /* ========== TABELA ========== */
+    .table-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        animation: fadeInUp 0.8s ease-out;
+    }
+    
+    .table-title {
+        color: #2c3e50;
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table thead {
+        background: #34495e;
+        color: white;
+    }
+    
+    .table th {
+        padding: 14px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table th.text-right {
+        text-align: right;
+    }
+    
+    .table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    
+    .table tbody tr {
+        transition: background 0.2s;
+    }
+    
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .value-entrada {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    
+    .value-saida {
+        color: #e74c3c;
+        font-weight: 600;
+    }
+    
+    .value-saldo {
+        font-weight: 700;
+        color: #2c3e50;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
+    
+    /* ========== BOTÕES ========== */
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header com Gradiente -->
+<div class="page-header">
+    <h1>📊 Relatório de Fluxo de Caixa</h1>
+</div>
+
+<!-- Filtros -->
+<div class="filters-card">
+    <div class="filters-title">🔍 Filtros</div>
+    <form method="get">
+        <div class="filters">
+            <div class="filter-group">
+                {{ form.data_inicio.label_tag }}
+                {{ form.data_inicio }}
+            </div>
+            <div class="filter-group">
+                {{ form.data_fim.label_tag }}
+                {{ form.data_fim }}
+            </div>
+            <div class="filter-group">
+                {{ form.conta_financeira.label_tag }}
+                {{ form.conta_financeira }}
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">Gerar Relatório</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if fluxo %}
+<!-- Gráfico -->
+<div class="chart-card">
+    <div class="chart-title">📈 Gráfico de Fluxo de Caixa</div>
+    <div class="chart-container">
+        <canvas id="fluxoChart"></canvas>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="table-card">
+    <div class="table-title">📋 Detalhamento Diário</div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th class="text-right">Entradas</th>
+                <th class="text-right">Saídas</th>
+                <th class="text-right">Saldo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in fluxo %}
+            <tr>
+                <td><strong>{{ item.data|date:"d/m/Y" }}</strong></td>
+                <td class="text-right value-entrada">+ R$ {{ item.entradas|floatformat:2 }}</td>
+                <td class="text-right value-saida">- R$ {{ item.saidas|floatformat:2 }}</td>
+                <td class="text-right value-saldo">R$ {{ item.saldo|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+const ctx = document.getElementById('fluxoChart').getContext('2d');
+const fluxoData = {{ fluxo_json|safe }};
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: fluxoData.map(d => d.data),
+        datasets: [{
+            label: 'Entradas',
+            data: fluxoData.map(d => d.entradas),
+            borderColor: '#27ae60',
+            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Saídas',
+            data: fluxoData.map(d => d.saidas),
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Saldo',
+            data: fluxoData.map(d => d.saldo),
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    padding: 15,
+                    font: {
+                        size: 12,
+                        weight: '600'
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toFixed(2);
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

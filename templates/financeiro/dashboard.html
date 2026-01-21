@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Financeiro - Guardião Aladin{% endblock %}
+{% block page_title %}Dashboard Financeiro{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<style>
+    /* ========== HEADER COM GRADIENTE ========== */
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        animation: fadeInDown 0.6s ease-out;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .dashboard-header-subtitle {
+        font-size: 16px;
+        opacity: 0.95;
+        font-weight: 300;
+    }
+    
+    /* ========== CARDS DE ESTATÍSTICAS ========== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--card-color);
+        transform: scaleX(0);
+        transition: transform 0.4s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .stat-card:nth-child(1) { --card-color: #e74c3c; animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { --card-color: #f39c12; animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { --card-color: #e74c3c; animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { --card-color: #27ae60; animation-delay: 0.4s; }
+    
+    .stat-card.danger { border-left: 4px solid #e74c3c; }
+    .stat-card.warning { border-left: 4px solid #f39c12; }
+    .stat-card.success { border-left: 4px solid #27ae60; }
+    .stat-card.info { border-left: 4px solid #3498db; }
+    
+    .stat-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        display: inline-block;
+        animation: pulse 2s infinite;
+    }
+    
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+        font-weight: 600;
+    }
+    
+    .stat-value {
+        color: #2c3e50;
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        line-height: 1.2;
+    }
+    
+    .stat-subtitle {
+        color: #95a5a6;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    /* ========== GRÁFICO ========== */
+    .chart-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+        animation: fadeInUp 0.8s ease-out;
+        transition: transform 0.3s;
+    }
+    
+    .chart-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    .chart-title {
+        color: #2c3e50;
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    /* ========== TABELA ========== */
+    .table-card {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        animation: fadeInUp 0.8s ease-out;
+    }
+    
+    .table-title {
+        color: #2c3e50;
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table thead {
+        background: #34495e;
+        color: white;
+    }
+    
+    .table th {
+        padding: 14px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    
+    .table tbody tr {
+        transition: background 0.2s;
+    }
+    
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .badge-receber {
+        background: #3498db;
+        color: white;
+    }
+    
+    .badge-pagar {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header com Gradiente -->
+<div class="dashboard-header">
+    <h1>💰 Dashboard Financeiro</h1>
+    <div class="dashboard-header-subtitle">Visão geral das finanças da empresa</div>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="stats-grid">
+    <div class="stat-card danger">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-label">A Receber Vencido</div>
+        <div class="stat-value">R$ {{ a_receber_vencido|floatformat:2 }}</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-icon">📅</div>
+        <div class="stat-label">A Receber Hoje</div>
+        <div class="stat-value">R$ {{ a_receber_hoje|floatformat:2 }}</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-label">A Pagar Vencido</div>
+        <div class="stat-value">R$ {{ a_pagar_vencido|floatformat:2 }}</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-icon">💰</div>
+        <div class="stat-label">Saldo Total</div>
+        <div class="stat-value">R$ {{ saldo_total|floatformat:2 }}</div>
+    </div>
+</div>
+
+<!-- Gráfico de Fluxo de Caixa -->
+<div class="chart-card">
+    <div class="chart-title">📊 Fluxo de Caixa - Últimos 7 Dias</div>
+    <div class="chart-container">
+        <canvas id="fluxoChart"></canvas>
+    </div>
+</div>
+
+<!-- Tabela de Próximos Vencimentos -->
+<div class="table-card">
+    <div class="table-title">📋 Próximos Vencimentos</div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Descrição</th>
+                <th>Vencimento</th>
+                <th class="text-right">Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for titulo in proximos_vencimentos_receber %}
+            <tr>
+                <td><span class="badge badge-receber">A Receber</span></td>
+                <td>{{ titulo.descricao }} - {{ titulo.cliente.nome_razao_social }}</td>
+                <td>{{ titulo.data_vencimento|date:"d/m/Y" }}</td>
+                <td class="text-right"><strong>R$ {{ titulo.valor|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+            {% for titulo in proximos_vencimentos_pagar %}
+            <tr>
+                <td><span class="badge badge-pagar">A Pagar</span></td>
+                <td>{{ titulo.descricao }}{% if titulo.fornecedor %} - {{ titulo.fornecedor.razao_social }}{% endif %}</td>
+                <td>{{ titulo.data_vencimento|date:"d/m/Y" }}</td>
+                <td class="text-right"><strong>R$ {{ titulo.valor|floatformat:2 }}</strong></td>
+            </tr>
+            {% endfor %}
+            {% if not proximos_vencimentos_receber and not proximos_vencimentos_pagar %}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                    Nenhum vencimento próximo.
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+const ctx = document.getElementById('fluxoChart').getContext('2d');
+const fluxoData = {{ fluxo_7_dias|safe }};
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: fluxoData.map(d => d.data),
+        datasets: [{
+            label: 'Entradas',
+            data: fluxoData.map(d => d.entradas),
+            borderColor: '#27ae60',
+            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Saídas',
+            data: fluxoData.map(d => d.saidas),
+            borderColor: '#e74c3c',
+            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+            tension: 0.4,
+            fill: true
+        }, {
+            label: 'Saldo',
+            data: fluxoData.map(d => d.saldo),
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    padding: 15,
+                    font: {
+                        size: 12,
+                        weight: '600'
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toFixed(2);
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

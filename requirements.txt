@@ -1,0 +1,26 @@
+# Django e dependências principais
+Django>=5.0,<6.0
+djangorestframework>=3.14.0
+python-dotenv>=1.0.0
+dj-database-url>=2.1.0
+
+# Banco de dados
+psycopg2-binary>=2.9.9
+
+# Testes
+pytest>=7.4.0
+pytest-django>=4.7.0
+
+# Geração de PDF
+weasyprint>=60.0
+
+# Criptografia LGPD
+cryptography>=41.0.7
+
+# TODO: Adicionar outras dependências conforme necessário:
+# - django-cors-headers (para CORS em produção)
+# - django-filter (para filtros na API)
+# - djangorestframework-simplejwt (para autenticação JWT)
+# - celery (para tarefas assíncronas)
+# - redis (para cache e celery)
+

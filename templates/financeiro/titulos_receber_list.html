@@ -1,0 +1,436 @@
+{% extends 'base.html' %}
+
+{% block title %}Títulos a Receber - Guardião Aladin{% endblock %}
+{% block page_title %}Títulos a Receber{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========== HEADER COM GRADIENTE ========== */
+    .page-header {
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+        animation: fadeInDown 0.6s ease-out;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .page-header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    .page-header-stats {
+        text-align: right;
+        font-size: 14px;
+        opacity: 0.95;
+    }
+    
+    .page-header-stats strong {
+        display: block;
+        font-size: 18px;
+        margin-top: 4px;
+    }
+    
+    /* ========== FILTROS ========== */
+    .filters-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    .filters-title {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+    
+    .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #555;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+    }
+    
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+    
+    .filter-actions {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+    }
+    
+    /* ========== TABELA ========== */
+    .table-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        animation: fadeInUp 0.8s ease-out;
+    }
+    
+    .table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .table-header h3 {
+        color: #2c3e50;
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table thead {
+        background: #34495e;
+        color: white;
+    }
+    
+    .table th {
+        padding: 14px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table th.text-right {
+        text-align: right;
+    }
+    
+    .table th.text-center {
+        text-align: center;
+    }
+    
+    .table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #eee;
+        color: #555;
+    }
+    
+    .table tbody tr {
+        transition: background 0.2s;
+    }
+    
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    /* ========== BADGES ========== */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    
+    .badge-aberto {
+        background: #f39c12;
+        color: white;
+    }
+    
+    .badge-pago {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .badge-atrasado {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .badge-cancelado {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    /* ========== BOTÕES ========== */
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+    
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #2980b9;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+    
+    .btn-success {
+        background: #27ae60;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: #229954;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #7f8c8d;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+    }
+    
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .btn-info:hover {
+        background: #138496;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+    }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    
+    .actions {
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    /* ========== PAGINAÇÃO ========== */
+    .pagination {
+        margin-top: 25px;
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .pagination a {
+        padding: 8px 16px;
+        margin: 0 4px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        color: #555;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+    
+    .pagination a:hover {
+        background: #3498db;
+        color: white;
+        border-color: #3498db;
+    }
+    
+    .pagination span {
+        padding: 8px 16px;
+        margin: 0 4px;
+        color: #555;
+        font-weight: 600;
+    }
+    
+    /* ========== ANIMAÇÕES ========== */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header com Gradiente -->
+<div class="page-header">
+    <div>
+        <h1>📥 Títulos a Receber</h1>
+    </div>
+    <div class="page-header-stats">
+        <div>Total Aberto</div>
+        <strong>R$ {{ total_aberto|floatformat:2 }}</strong>
+        <div style="margin-top: 8px;">Total Pago</div>
+        <strong>R$ {{ total_pago|floatformat:2 }}</strong>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-card">
+    <div class="filters-title">🔍 Filtros</div>
+    <form method="get">
+        <div class="filters">
+            <div class="filter-group">
+                {{ form_filtro.status.label_tag }}
+                {{ form_filtro.status }}
+            </div>
+            <div class="filter-group">
+                {{ form_filtro.cliente.label_tag }}
+                {{ form_filtro.cliente }}
+            </div>
+            <div class="filter-group">
+                {{ form_filtro.data_inicio.label_tag }}
+                {{ form_filtro.data_inicio }}
+            </div>
+            <div class="filter-group">
+                {{ form_filtro.data_fim.label_tag }}
+                {{ form_filtro.data_fim }}
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="{% url 'financeiro:titulos_receber' %}" class="btn btn-secondary">Limpar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Tabela -->
+<div class="table-card">
+    <div class="table-header">
+        <h3>Lista de Títulos</h3>
+        <a href="{% url 'financeiro:titulo_receber_criar' %}" class="btn btn-success">+ Novo Título</a>
+    </div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Vencimento</th>
+                <th class="text-right">Valor</th>
+                <th class="text-center">Status</th>
+                <th class="text-center">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for titulo in titulos %}
+            <tr>
+                <td><strong>#{{ titulo.id }}</strong></td>
+                <td>{{ titulo.cliente.nome_razao_social }}</td>
+                <td>{{ titulo.data_vencimento|date:"d/m/Y" }}</td>
+                <td class="text-right"><strong>R$ {{ titulo.valor|floatformat:2 }}</strong></td>
+                <td class="text-center">
+                    {% if titulo.status == 'ABERTO' %}
+                        <span class="badge badge-aberto">Aberto</span>
+                    {% elif titulo.status == 'PAGO' %}
+                        <span class="badge badge-pago">Pago</span>
+                    {% elif titulo.status == 'ATRASADO' %}
+                        <span class="badge badge-atrasado">Atrasado</span>
+                    {% else %}
+                        <span class="badge badge-cancelado">{{ titulo.status }}</span>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    <div class="actions">
+                        <a href="{% url 'financeiro:titulo_receber_detail' titulo.pk %}" class="btn btn-info btn-sm">Ver</a>
+                        {% if titulo.status == 'ABERTO' %}
+                        <a href="{% url 'financeiro:titulo_receber_editar' titulo.pk %}" class="btn btn-secondary btn-sm">Editar</a>
+                        <a href="{% url 'financeiro:titulo_receber_detail' titulo.pk %}#baixar" class="btn btn-success btn-sm">Baixar</a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                    Nenhum título encontrado.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if is_paginated %}
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}">« Anterior</a>
+        {% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">Próxima »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

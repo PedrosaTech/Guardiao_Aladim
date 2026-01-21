@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Pedido #{{ pedido.id }} - Guardião Aladin{% endblock %}
+{% block page_title %}Editar Pedido #{{ pedido.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .required {
+        color: #e74c3c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h1 style="color: #2c3e50; margin-bottom: 30px;">Editar Pedido #{{ pedido.id }}</h1>
+    
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Loja <span class="required">*</span></label>
+                <select name="loja" required>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}" {% if pedido.loja.id == loja.id %}selected{% endif %}>{{ loja.nome_fantasia }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Cliente <span class="required">*</span></label>
+                <select name="cliente" required>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if pedido.cliente.id == cliente.id %}selected{% endif %}>{{ cliente.nome_razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de Venda <span class="required">*</span></label>
+                <select name="tipo_venda" required>
+                    {% for value, label in tipo_venda_choices %}
+                    <option value="{{ value }}" {% if pedido.tipo_venda == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if pedido.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Condição de Pagamento <span class="required">*</span></label>
+            <select name="condicao_pagamento" required>
+                {% for condicao in condicoes_pagamento %}
+                <option value="{{ condicao.id }}" {% if pedido.condicao_pagamento.id == condicao.id %}selected{% endif %}>{{ condicao.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Observações</label>
+            <textarea name="observacoes" placeholder="Observações sobre o pedido...">{{ pedido.observacoes|default:'' }}</textarea>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{% url 'vendas:detalhes_pedido' pedido.id %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Criar Pedido - Guardião Aladin{% endblock %}
+{% block page_title %}Criar Pedido{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-group textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .alert {
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .required {
+        color: #e74c3c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h1 style="color: #2c3e50; margin-bottom: 30px;">Criar Novo Pedido</h1>
+    
+    {% if erro %}
+    <div class="alert alert-error">
+        <strong>Erro:</strong> {{ erro }}
+    </div>
+    {% endif %}
+    
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Loja <span class="required">*</span></label>
+                <select name="loja" required>
+                    <option value="">Selecione...</option>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}" {% if form_data.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome_fantasia }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Cliente <span class="required">*</span></label>
+                <select name="cliente" required>
+                    <option value="">Selecione...</option>
+                    {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}" {% if form_data.cliente == cliente.id|stringformat:"s" %}selected{% endif %}>{{ cliente.nome_razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de Venda <span class="required">*</span></label>
+                <select name="tipo_venda" required>
+                    {% for value, label in tipo_venda_choices %}
+                    <option value="{{ value }}" {% if form_data.tipo_venda == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if form_data.status == value or not form_data.status and value == 'ORCAMENTO' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Condição de Pagamento</label>
+            <select name="condicao_pagamento">
+                <option value="">Usar padrão (À Vista)</option>
+                {% for condicao in condicoes_pagamento %}
+                <option value="{{ condicao.id }}" {% if form_data.condicao_pagamento == condicao.id|stringformat:"s" %}selected{% endif %}>{{ condicao.nome }}</option>
+                {% endfor %}
+            </select>
+            <small style="color: #7f8c8d;">Se não selecionar, será criada uma condição "À Vista" automaticamente.</small>
+        </div>
+        
+        <div class="form-group">
+            <label>Observações</label>
+            <textarea name="observacoes" placeholder="Observações sobre o pedido...">{{ form_data.observacoes|default:'' }}</textarea>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{% url 'vendas:lista_pedidos' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Criar Pedido</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+

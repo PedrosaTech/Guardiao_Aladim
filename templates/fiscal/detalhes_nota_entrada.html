@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NF-e Entrada {{ nota.numero }}/{{ nota.serie }} - Guardião Aladin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>NF-e Entrada {{ nota.numero }}/{{ nota.serie }}</h1>
+            </div>
+            <div>
+                <a href="{% url 'fiscal:lista_notas_entrada' %}" class="btn btn-secondary">Voltar</a>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div>
+                <!-- Informações da Nota -->
+                <div class="card">
+                    <h2>Informações da Nota Fiscal</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Número</span>
+                            <span class="info-value">{{ nota.numero }}/{{ nota.serie }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Data de Emissão</span>
+                            <span class="info-value">{{ nota.data_emissao|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Data de Entrada</span>
+                            <span class="info-value">{{ nota.data_entrada|date:"d/m/Y" }}</span>
+                        </div>
+                        {% if nota.chave_acesso %}
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">Chave de Acesso</span>
+                            <span class="info-value" style="font-family: monospace; font-size: 12px;">{{ nota.chave_acesso }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Fornecedor -->
+                <div class="card">
+                    <h2>Fornecedor</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Razão Social</span>
+                            <span class="info-value">{{ nota.fornecedor.razao_social }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">CNPJ</span>
+                            <span class="info-value">{{ nota.fornecedor.cnpj|default:"-" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <!-- Informações Adicionais -->
+                <div class="card">
+                    <h2>Informações Adicionais</h2>
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Loja</span>
+                        <span class="info-value">{{ nota.loja.nome }}</span>
+                    </div>
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Empresa</span>
+                        <span class="info-value">{{ nota.loja.empresa.nome_fantasia }}</span>
+                    </div>
+                </div>
+
+                <!-- Valor Total -->
+                <div class="card">
+                    <h2>Valor Total</h2>
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 32px; font-weight: 600; color: #27ae60;">
+                            R$ {{ nota.valor_total|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

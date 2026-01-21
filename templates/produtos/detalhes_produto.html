@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ produto.descricao }} - Guardião Aladin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .badge-risco-1-1g { background: #e74c3c; color: white; }
+        .badge-risco-1-2g { background: #e67e22; color: white; }
+        .badge-risco-1-3g { background: #f39c12; color: white; }
+        .badge-risco-1-4g { background: #27ae60; color: white; }
+        .badge-risco-1-4s { background: #2ecc71; color: white; }
+        .badge-risco-outra { background: #95a5a6; color: white; }
+        .badge-restricao {
+            background: #e74c3c;
+            color: white;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .table td {
+            color: #555;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>{{ produto.descricao }}</h1>
+                <div style="margin-top: 5px; font-size: 14px; opacity: 0.9;">
+                    {{ produto.codigo_interno|default:"Sem código" }} • {{ produto.categoria.nome }}
+                </div>
+            </div>
+            <div>
+                <a href="{% url 'produtos:lista_produtos' %}" class="btn btn-secondary">Voltar</a>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div>
+                <!-- Informações Básicas -->
+                <div class="card">
+                    <h2>Informações do Produto</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Código Interno</span>
+                            <span class="info-value">{{ produto.codigo_interno|default:"-" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Código de Barras</span>
+                            <span class="info-value">{{ produto.codigo_barras|default:"-" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Categoria</span>
+                            <span class="info-value">{{ produto.categoria.nome }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Empresa</span>
+                            <span class="info-value">{{ produto.empresa.nome_fantasia }}</span>
+                        </div>
+                        {% if produto.loja %}
+                        <div class="info-item">
+                            <span class="info-label">Loja</span>
+                            <span class="info-value">{{ produto.loja.nome }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <span class="info-label">Preço de Venda Sugerido</span>
+                            <span class="info-value">R$ {{ produto.preco_venda_sugerido|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Características de Pirotecnia -->
+                <div class="card">
+                    <h2>Características de Pirotecnia</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Classe de Risco</span>
+                            <span>
+                                {% if produto.classe_risco == '1.1G' %}
+                                <span class="badge badge-risco-1-1g">{{ produto.get_classe_risco_display }}</span>
+                                {% elif produto.classe_risco == '1.2G' %}
+                                <span class="badge badge-risco-1-2g">{{ produto.get_classe_risco_display }}</span>
+                                {% elif produto.classe_risco == '1.3G' %}
+                                <span class="badge badge-risco-1-3g">{{ produto.get_classe_risco_display }}</span>
+                                {% elif produto.classe_risco == '1.4G' %}
+                                <span class="badge badge-risco-1-4g">{{ produto.get_classe_risco_display }}</span>
+                                {% elif produto.classe_risco == '1.4S' %}
+                                <span class="badge badge-risco-1-4s">{{ produto.get_classe_risco_display }}</span>
+                                {% else %}
+                                <span class="badge badge-risco-outra">{{ produto.get_classe_risco_display }}</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if produto.subclasse_risco %}
+                        <div class="info-item">
+                            <span class="info-label">Subclasse de Risco</span>
+                            <span class="info-value">{{ produto.subclasse_risco }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <span class="info-label">Restrição de Exército</span>
+                            <span>
+                                {% if produto.possui_restricao_exercito %}
+                                <span class="badge badge-restricao">⚠️ Sim</span>
+                                {% else %}
+                                <span>Não</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if produto.numero_certificado_exercito %}
+                        <div class="info-item">
+                            <span class="info-label">Número do Certificado</span>
+                            <span class="info-value">{{ produto.numero_certificado_exercito }}</span>
+                        </div>
+                        {% endif %}
+                        {% if produto.numero_lote %}
+                        <div class="info-item">
+                            <span class="info-label">Número do Lote</span>
+                            <span class="info-value">{{ produto.numero_lote }}</span>
+                        </div>
+                        {% endif %}
+                        {% if produto.validade %}
+                        <div class="info-item">
+                            <span class="info-label">Validade</span>
+                            <span class="info-value">{{ produto.validade|date:"d/m/Y" }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if produto.condicoes_armazenamento %}
+                    <div style="margin-top: 15px;">
+                        <span class="info-label">Condições de Armazenamento</span>
+                        <p style="color: #555; margin-top: 5px;">{{ produto.condicoes_armazenamento }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Dados Fiscais -->
+                <div class="card">
+                    <h2>Dados Fiscais</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">NCM</span>
+                            <span class="info-value">{{ produto.ncm|default:"-" }}</span>
+                        </div>
+                        {% if produto.cest %}
+                        <div class="info-item">
+                            <span class="info-label">CEST</span>
+                            <span class="info-value">{{ produto.cest }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <span class="info-label">CFOP Venda Dentro UF</span>
+                            <span class="info-value">{{ produto.cfop_venda_dentro_uf|default:"-" }}</span>
+                        </div>
+                        {% if produto.cfop_venda_fora_uf %}
+                        <div class="info-item">
+                            <span class="info-label">CFOP Venda Fora UF</span>
+                            <span class="info-value">{{ produto.cfop_venda_fora_uf }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="info-item">
+                            <span class="info-label">Unidade Comercial</span>
+                            <span class="info-value">{{ produto.unidade_comercial|default:"UN" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">CSOSN/CST ICMS</span>
+                            <span class="info-value">{{ produto.csosn_cst|default:"-" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Alíquota ICMS</span>
+                            <span class="info-value">{{ produto.aliquota_icms|floatformat:2 }}%</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Alíquota PIS</span>
+                            <span class="info-value">{{ produto.aliquota_pis|floatformat:2 }}%</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Alíquota COFINS</span>
+                            <span class="info-value">{{ produto.aliquota_cofins|floatformat:2 }}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estoque -->
+                {% if estoques %}
+                <div class="card">
+                    <h2>Estoque Atual</h2>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Local</th>
+                                <th>Quantidade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for estoque in estoques %}
+                            <tr>
+                                <td>{{ estoque.local_estoque.nome }}</td>
+                                <td>{{ estoque.quantidade|floatformat:3 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Observações -->
+                {% if produto.observacoes %}
+                <div class="card">
+                    <h2>Observações</h2>
+                    <p style="color: #555; line-height: 1.6;">{{ produto.observacoes }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

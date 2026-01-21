@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Criar Cliente - Guardião Aladin{% endblock %}
+{% block page_title %}Criar Cliente{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    .alert {
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    .required {
+        color: #e74c3c;
+    }
+    hr {
+        margin: 30px 0;
+        border: none;
+        border-top: 1px solid #eee;
+    }
+    h3 {
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-size: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Criar Novo Cliente</h2>
+    <a href="{% url 'pessoas:lista_clientes' %}" class="btn btn-secondary">Voltar</a>
+</div>
+
+{% if erro %}
+<div class="alert alert-error">
+    <strong>Erro:</strong> {{ erro }}
+</div>
+{% endif %}
+
+<div class="form-card">
+    <form method="POST">
+        {% csrf_token %}
+        
+        <h3>Informações Básicas</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Empresa <span class="required">*</span></label>
+                <select name="empresa" required>
+                    <option value="">Selecione...</option>
+                    {% for empresa in empresas %}
+                    <option value="{{ empresa.id }}">{{ empresa.nome_fantasia }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Loja</label>
+                <select name="loja">
+                    <option value="">Nenhuma</option>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}">{{ loja.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de Pessoa <span class="required">*</span></label>
+                <select name="tipo_pessoa" required>
+                    <option value="">Selecione...</option>
+                    {% for value, label in tipo_pessoa_choices %}
+                    <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nome / Razão Social <span class="required">*</span></label>
+                <input type="text" name="nome_razao_social" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Apelido / Nome Fantasia</label>
+                <input type="text" name="apelido_nome_fantasia">
+            </div>
+            <div class="form-group">
+                <label>CPF / CNPJ <span class="required">*</span></label>
+                <input type="text" name="cpf_cnpj" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>RG / Inscrição Estadual</label>
+                <input type="text" name="rg_inscricao_estadual">
+            </div>
+            <div class="form-group">
+                <label>Data de Nascimento</label>
+                <input type="date" name="data_nascimento">
+            </div>
+        </div>
+
+        <hr>
+
+        <h3>Contato</h3>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" name="telefone">
+            </div>
+            <div class="form-group">
+                <label>WhatsApp</label>
+                <input type="text" name="whatsapp">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>E-mail</label>
+            <input type="email" name="email">
+        </div>
+
+        <hr>
+
+        <h3>Endereço</h3>
+        <div class="form-row">
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Logradouro</label>
+                <input type="text" name="logradouro">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Número</label>
+                <input type="text" name="numero">
+            </div>
+            <div class="form-group">
+                <label>Complemento</label>
+                <input type="text" name="complemento">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Bairro</label>
+                <input type="text" name="bairro">
+            </div>
+            <div class="form-group">
+                <label>Cidade</label>
+                <input type="text" name="cidade">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>UF</label>
+                <input type="text" name="uf" maxlength="2" placeholder="Ex: BA">
+            </div>
+            <div class="form-group">
+                <label>CEP</label>
+                <input type="text" name="cep" placeholder="00000-000">
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'pessoas:lista_clientes' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Criar Cliente</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

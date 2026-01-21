@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cliente.nome_razao_social }} - Guardião Aladin{% endblock %}
+{% block page_title %}{{ cliente.nome_razao_social }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .card h2 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        color: #7f8c8d;
+        font-size: 12px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    .info-value {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 500;
+    }
+    .badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .badge-pf { background: #3498db; color: white; }
+    .badge-pj { background: #9b59b6; color: white; }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .table th,
+    .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    .table td {
+        color: #555;
+    }
+    .text-right {
+        text-align: right;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    @media (max-width: 968px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="color: #2c3e50; margin: 0;">{{ cliente.nome_razao_social }}</h2>
+        <div style="margin-top: 5px; font-size: 14px; color: #7f8c8d;">
+            {% if cliente.tipo_pessoa == 'PF' %}
+            <span class="badge badge-pf">{{ cliente.get_tipo_pessoa_display }}</span>
+            {% else %}
+            <span class="badge badge-pj">{{ cliente.get_tipo_pessoa_display }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div>
+        <a href="{% url 'pessoas:lista_clientes' %}" class="btn btn-secondary">Voltar</a>
+    </div>
+</div>
+
+<div class="content-grid">
+    <div>
+        <!-- Informações do Cliente -->
+        <div class="card">
+            <h2>Informações do Cliente</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Nome / Razão Social</span>
+                    <span class="info-value">{{ cliente.nome_razao_social }}</span>
+                </div>
+                {% if cliente.apelido_nome_fantasia %}
+                <div class="info-item">
+                    <span class="info-label">Apelido / Nome Fantasia</span>
+                    <span class="info-value">{{ cliente.apelido_nome_fantasia }}</span>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <span class="info-label">CPF / CNPJ</span>
+                    <span class="info-value">{{ cliente.cpf_cnpj|default:"-" }}</span>
+                </div>
+                {% if cliente.rg_inscricao_estadual %}
+                <div class="info-item">
+                    <span class="info-label">RG / Inscrição Estadual</span>
+                    <span class="info-value">{{ cliente.rg_inscricao_estadual }}</span>
+                </div>
+                {% endif %}
+                {% if cliente.data_nascimento %}
+                <div class="info-item">
+                    <span class="info-label">Data de Nascimento</span>
+                    <span class="info-value">{{ cliente.data_nascimento|date:"d/m/Y" }}</span>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <span class="info-label">Empresa</span>
+                    <span class="info-value">{{ cliente.empresa.nome_fantasia }}</span>
+                </div>
+                {% if cliente.loja %}
+                <div class="info-item">
+                    <span class="info-label">Loja</span>
+                    <span class="info-value">{{ cliente.loja.nome }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Contato -->
+        <div class="card">
+            <h2>Contato</h2>
+            <div class="info-grid">
+                {% if cliente.telefone %}
+                <div class="info-item">
+                    <span class="info-label">Telefone</span>
+                    <span class="info-value">{{ cliente.telefone }}</span>
+                </div>
+                {% endif %}
+                {% if cliente.whatsapp %}
+                <div class="info-item">
+                    <span class="info-label">WhatsApp</span>
+                    <span class="info-value">{{ cliente.whatsapp }}</span>
+                </div>
+                {% endif %}
+                {% if cliente.email %}
+                <div class="info-item">
+                    <span class="info-label">E-mail</span>
+                    <span class="info-value">{{ cliente.email }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Endereço -->
+        {% if cliente.logradouro %}
+        <div class="card">
+            <h2>Endereço</h2>
+            <div class="info-grid">
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <span class="info-label">Logradouro</span>
+                    <span class="info-value">{{ cliente.logradouro }}{% if cliente.numero %}, {{ cliente.numero }}{% endif %}{% if cliente.complemento %} - {{ cliente.complemento }}{% endif %}</span>
+                </div>
+                {% if cliente.bairro %}
+                <div class="info-item">
+                    <span class="info-label">Bairro</span>
+                    <span class="info-value">{{ cliente.bairro }}</span>
+                </div>
+                {% endif %}
+                {% if cliente.cidade %}
+                <div class="info-item">
+                    <span class="info-label">Cidade</span>
+                    <span class="info-value">{{ cliente.cidade }}{% if cliente.uf %} - {{ cliente.uf }}{% endif %}</span>
+                </div>
+                {% endif %}
+                {% if cliente.cep %}
+                <div class="info-item">
+                    <span class="info-label">CEP</span>
+                    <span class="info-value">{{ cliente.cep }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Pedidos Recentes -->
+        {% if pedidos %}
+        <div class="card">
+            <h2>Pedidos Recentes</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                    <tr>
+                        <td>#{{ pedido.id }}</td>
+                        <td>{{ pedido.data_emissao|date:"d/m/Y H:i" }}</td>
+                        <td>{{ pedido.get_status_display }}</td>
+                        <td class="text-right">R$ {{ pedido.valor_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Notas Fiscais Recentes -->
+        {% if notas %}
+        <div class="card">
+            <h2>Notas Fiscais Recentes</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nota in notas %}
+                    <tr>
+                        <td>{{ nota.numero }}/{{ nota.serie }}</td>
+                        <td>{% if nota.data_emissao %}{{ nota.data_emissao|date:"d/m/Y H:i" }}{% else %}-{% endif %}</td>
+                        <td>{{ nota.get_status_display }}</td>
+                        <td class="text-right">R$ {{ nota.valor_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

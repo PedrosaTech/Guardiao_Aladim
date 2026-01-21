@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ fornecedor.razao_social }} - Guardião Aladin{% endblock %}
+{% block page_title %}{{ fornecedor.razao_social }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .content-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .card h2 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .info-label {
+        color: #7f8c8d;
+        font-size: 12px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    .info-value {
+        color: #2c3e50;
+        font-size: 16px;
+        font-weight: 500;
+    }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .table th,
+    .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    .table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    .table td {
+        color: #555;
+    }
+    .text-right {
+        text-align: right;
+    }
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s;
+    }
+    .btn-secondary {
+        background: #95a5a6;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #7f8c8d;
+    }
+    @media (max-width: 968px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2 style="color: #2c3e50; margin: 0;">{{ fornecedor.razao_social }}</h2>
+        {% if fornecedor.nome_fantasia %}
+        <div style="margin-top: 5px; font-size: 14px; color: #7f8c8d;">
+            {{ fornecedor.nome_fantasia }}
+        </div>
+        {% endif %}
+    </div>
+    <div>
+        <a href="{% url 'pessoas:lista_fornecedores' %}" class="btn btn-secondary">Voltar</a>
+    </div>
+</div>
+
+<div class="content-grid">
+    <div>
+        <!-- Informações do Fornecedor -->
+        <div class="card">
+            <h2>Informações do Fornecedor</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Razão Social</span>
+                    <span class="info-value">{{ fornecedor.razao_social }}</span>
+                </div>
+                {% if fornecedor.nome_fantasia %}
+                <div class="info-item">
+                    <span class="info-label">Nome Fantasia</span>
+                    <span class="info-value">{{ fornecedor.nome_fantasia }}</span>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <span class="info-label">CNPJ</span>
+                    <span class="info-value">{{ fornecedor.cnpj|default:"-" }}</span>
+                </div>
+                {% if fornecedor.inscricao_estadual %}
+                <div class="info-item">
+                    <span class="info-label">Inscrição Estadual</span>
+                    <span class="info-value">{{ fornecedor.inscricao_estadual }}</span>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <span class="info-label">Empresa</span>
+                    <span class="info-value">{{ fornecedor.empresa.nome_fantasia }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contato -->
+        <div class="card">
+            <h2>Contato</h2>
+            <div class="info-grid">
+                {% if fornecedor.telefone %}
+                <div class="info-item">
+                    <span class="info-label">Telefone</span>
+                    <span class="info-value">{{ fornecedor.telefone }}</span>
+                </div>
+                {% endif %}
+                {% if fornecedor.whatsapp %}
+                <div class="info-item">
+                    <span class="info-label">WhatsApp</span>
+                    <span class="info-value">{{ fornecedor.whatsapp }}</span>
+                </div>
+                {% endif %}
+                {% if fornecedor.email %}
+                <div class="info-item">
+                    <span class="info-label">E-mail</span>
+                    <span class="info-value">{{ fornecedor.email }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Endereço -->
+        {% if fornecedor.logradouro %}
+        <div class="card">
+            <h2>Endereço</h2>
+            <div class="info-grid">
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <span class="info-label">Logradouro</span>
+                    <span class="info-value">{{ fornecedor.logradouro }}{% if fornecedor.numero %}, {{ fornecedor.numero }}{% endif %}{% if fornecedor.complemento %} - {{ fornecedor.complemento }}{% endif %}</span>
+                </div>
+                {% if fornecedor.bairro %}
+                <div class="info-item">
+                    <span class="info-label">Bairro</span>
+                    <span class="info-value">{{ fornecedor.bairro }}</span>
+                </div>
+                {% endif %}
+                {% if fornecedor.cidade %}
+                <div class="info-item">
+                    <span class="info-label">Cidade</span>
+                    <span class="info-value">{{ fornecedor.cidade }}{% if fornecedor.uf %} - {{ fornecedor.uf }}{% endif %}</span>
+                </div>
+                {% endif %}
+                {% if fornecedor.cep %}
+                <div class="info-item">
+                    <span class="info-label">CEP</span>
+                    <span class="info-value">{{ fornecedor.cep }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Notas Fiscais de Entrada -->
+        {% if notas %}
+        <div class="card">
+            <h2>Notas Fiscais de Entrada Recentes</h2>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Data Entrada</th>
+                        <th>Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nota in notas %}
+                    <tr>
+                        <td>{{ nota.numero }}/{{ nota.serie }}</td>
+                        <td>{{ nota.data_entrada|date:"d/m/Y" }}</td>
+                        <td class="text-right">R$ {{ nota.valor_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

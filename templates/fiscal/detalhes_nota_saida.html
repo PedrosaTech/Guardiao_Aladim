@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NF-e {{ nota.numero }}/{{ nota.serie }} - Guardião Aladin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-label {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .badge-nfe { background: #3498db; color: white; }
+        .badge-nfce { background: #9b59b6; color: white; }
+        .badge-rascunho { background: #95a5a6; color: white; }
+        .badge-processamento { background: #f39c12; color: white; }
+        .badge-autorizada { background: #27ae60; color: white; }
+        .badge-rejeitada { background: #e74c3c; color: white; }
+        .badge-cancelada { background: #7f8c8d; color: white; }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .table td {
+            color: #555;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .totais-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .total-row:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        @media (max-width: 968px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>
+                    {% if nota.tipo_documento == 'NFE' %}
+                    <span class="badge badge-nfe">NF-e</span>
+                    {% else %}
+                    <span class="badge badge-nfce">NFC-e</span>
+                    {% endif %}
+                    {{ nota.numero }}/{{ nota.serie }}
+                </h1>
+                <div style="margin-top: 5px; font-size: 14px; opacity: 0.9;">
+                    {% if nota.status == 'RASCUNHO' %}
+                    <span class="badge badge-rascunho">{{ nota.get_status_display }}</span>
+                    {% elif nota.status == 'EM_PROCESSAMENTO' %}
+                    <span class="badge badge-processamento">{{ nota.get_status_display }}</span>
+                    {% elif nota.status == 'AUTORIZADA' %}
+                    <span class="badge badge-autorizada">{{ nota.get_status_display }}</span>
+                    {% elif nota.status == 'REJEITADA' %}
+                    <span class="badge badge-rejeitada">{{ nota.get_status_display }}</span>
+                    {% elif nota.status == 'CANCELADA' %}
+                    <span class="badge badge-cancelada">{{ nota.get_status_display }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="header-actions">
+                {% if nota.status == 'AUTORIZADA' %}
+                <a href="{% url 'fiscal:imprimir_nfe_pdf' nota.id %}" class="btn btn-success" target="_blank">📄 Imprimir PDF</a>
+                {% endif %}
+                <a href="{% url 'fiscal:lista_notas_saida' %}" class="btn btn-secondary">Voltar</a>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div>
+                <!-- Informações da Nota -->
+                <div class="card">
+                    <h2>Informações da Nota Fiscal</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Número</span>
+                            <span class="info-value">{{ nota.numero }}/{{ nota.serie }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Tipo de Documento</span>
+                            <span class="info-value">{{ nota.get_tipo_documento_display }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Status</span>
+                            <span>
+                                {% if nota.status == 'RASCUNHO' %}
+                                <span class="badge badge-rascunho">{{ nota.get_status_display }}</span>
+                                {% elif nota.status == 'EM_PROCESSAMENTO' %}
+                                <span class="badge badge-processamento">{{ nota.get_status_display }}</span>
+                                {% elif nota.status == 'AUTORIZADA' %}
+                                <span class="badge badge-autorizada">{{ nota.get_status_display }}</span>
+                                {% elif nota.status == 'REJEITADA' %}
+                                <span class="badge badge-rejeitada">{{ nota.get_status_display }}</span>
+                                {% elif nota.status == 'CANCELADA' %}
+                                <span class="badge badge-cancelada">{{ nota.get_status_display }}</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Data de Emissão</span>
+                            <span class="info-value">
+                                {% if nota.data_emissao %}
+                                {{ nota.data_emissao|date:"d/m/Y H:i" }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if nota.chave_acesso %}
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">Chave de Acesso</span>
+                            <span class="info-value" style="font-family: monospace; font-size: 12px;">{{ nota.chave_acesso }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Cliente -->
+                <div class="card">
+                    <h2>Cliente</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Nome/Razão Social</span>
+                            <span class="info-value">{{ nota.cliente.nome_razao_social }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">CPF/CNPJ</span>
+                            <span class="info-value">{{ nota.cliente.cpf_cnpj|default:"-" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itens -->
+                {% if itens %}
+                <div class="card">
+                    <h2>Itens da Nota Fiscal</h2>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Código</th>
+                                <th>Descrição</th>
+                                <th>Quantidade</th>
+                                <th>Preço Unit.</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in itens %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ item.produto.codigo_interno|default:"-" }}</td>
+                                <td>{{ item.produto.descricao }}</td>
+                                <td>{{ item.quantidade|floatformat:3 }}</td>
+                                <td class="text-right">R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                                <td class="text-right">R$ {{ item.total|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Impostos -->
+                {% if impostos %}
+                <div class="card">
+                    <h2>Cálculo de Impostos</h2>
+                    <div class="totais-section">
+                        <div class="total-row">
+                            <span>Base de Cálculo do ICMS:</span>
+                            <span>R$ {{ impostos.base_icms|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor do ICMS:</span>
+                            <span>R$ {{ impostos.valor_icms|floatformat:2 }} {% if impostos.is_simples_nacional %}(embutido no Simples){% endif %}</span>
+                        </div>
+                        {% if impostos.base_icms_st > 0 %}
+                        <div class="total-row">
+                            <span>Base de Cálculo do ICMS ST:</span>
+                            <span>R$ {{ impostos.base_icms_st|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor do ICMS ST:</span>
+                            <span>R$ {{ impostos.valor_icms_st|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="total-row">
+                            <span>Base de Cálculo do PIS:</span>
+                            <span>R$ {{ impostos.base_pis|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor do PIS:</span>
+                            <span>R$ {{ impostos.valor_pis|floatformat:2 }} {% if impostos.is_simples_nacional %}(embutido no Simples){% endif %}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Base de Cálculo do COFINS:</span>
+                            <span>R$ {{ impostos.base_cofins|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor do COFINS:</span>
+                            <span>R$ {{ impostos.valor_cofins|floatformat:2 }} {% if impostos.is_simples_nacional %}(embutido no Simples){% endif %}</span>
+                        </div>
+                        {% if impostos.base_ipi > 0 %}
+                        <div class="total-row">
+                            <span>Base de Cálculo do IPI:</span>
+                            <span>R$ {{ impostos.base_ipi|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor do IPI:</span>
+                            <span>R$ {{ impostos.valor_ipi|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="total-row">
+                            <span>Valor Total dos Produtos:</span>
+                            <span>R$ {{ impostos.valor_produtos|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>VALOR TOTAL DA NF-e:</span>
+                            <span>R$ {{ impostos.valor_total_nfe|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    {% if impostos.is_simples_nacional %}
+                    <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; color: #856404; font-size: 12px;">
+                        ⚠️ Empresa optante pelo Simples Nacional. Impostos (ICMS, PIS, COFINS) não calculados separadamente.
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Cancelamento -->
+                {% if nota.motivo_cancelamento %}
+                <div class="card">
+                    <h2>Cancelamento</h2>
+                    <p style="color: #e74c3c;">{{ nota.motivo_cancelamento }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <!-- Informações Adicionais -->
+                <div class="card">
+                    <h2>Informações Adicionais</h2>
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Loja</span>
+                        <span class="info-value">{{ nota.loja.nome }}</span>
+                    </div>
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Empresa</span>
+                        <span class="info-value">{{ nota.loja.empresa.nome_fantasia }}</span>
+                    </div>
+                    {% if nota.pedido_venda %}
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Pedido de Venda</span>
+                        <span class="info-value">#{{ nota.pedido_venda.id }}</span>
+                    </div>
+                    {% endif %}
+                    {% if nota.evento %}
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Evento</span>
+                        <span class="info-value">{{ nota.evento.nome_evento }}</span>
+                    </div>
+                    {% endif %}
+                    {% if config_fiscal %}
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Regime Tributário</span>
+                        <span class="info-value">{{ config_fiscal.regime_tributario }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Valor Total -->
+                <div class="card">
+                    <h2>Valor Total</h2>
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 32px; font-weight: 600; color: #27ae60;">
+                            R$ {{ nota.valor_total|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

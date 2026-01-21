@@ -1,0 +1,1633 @@
+{% extends 'base.html' %}
+
+{% block title %}PDV - Guardião Aladin{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ESCONDER SIDEBAR E TOPBAR NO PDV */
+    .sidebar {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    .topbar {
+        display: none !important;
+    }
+    
+    .content-wrapper {
+        padding: 0 !important;
+    }
+    
+    body {
+        display: block !important;
+    }
+
+    /* RESET E BASE */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #1a1a2e;
+        color: #fff;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+    }
+
+    /* CONTAINER PRINCIPAL - 2 COLUNAS */
+    .pdv-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        height: 100vh;
+        width: 100vw;
+        gap: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    /* ÁREA PRINCIPAL - ESQUERDA */
+    .main-area {
+        background: #16213e;
+        display: flex;
+        flex-direction: column;
+        border-right: 3px solid #0f3460;
+    }
+
+    /* HEADER COM INFO DO CAIXA */
+    .pdv-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 12px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        flex-shrink: 0;
+    }
+
+    .header-left h1 {
+        font-size: 20px;
+        margin-bottom: 2px;
+    }
+
+    .header-left p {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .header-right {
+        text-align: right;
+        font-size: 11px;
+    }
+
+    .header-right strong {
+        display: block;
+        font-size: 14px;
+    }
+
+    /* BUSCA DE PRODUTO - DESTAQUE */
+    .search-area {
+        padding: 12px 20px;
+        background: #1a1a2e;
+        border-bottom: 2px solid #0f3460;
+        flex-shrink: 0;
+    }
+
+    .search-box {
+        position: relative;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 12px 50px 12px 40px;
+        font-size: 16px;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        background: #16213e;
+        color: #fff;
+        transition: all 0.3s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #764ba2;
+        box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+    }
+    
+    .search-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .search-input:not(:disabled) {
+        pointer-events: auto;
+        user-select: text;
+        cursor: text;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+    }
+
+    /* LISTA DE ITENS COM SCROLL */
+    .items-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 20px;
+        min-height: 0;
+    }
+
+    .items-area::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .items-area::-webkit-scrollbar-track {
+        background: #0f3460;
+    }
+
+    .items-area::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 4px;
+    }
+
+    /* ITEM DO CARRINHO */
+    .item-row {
+        background: #0f3460;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.3s;
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .item-row:hover {
+        background: #1a2744;
+        transform: translateX(5px);
+    }
+
+    .item-number {
+        background: #667eea;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .item-info {
+        flex: 1;
+    }
+
+    .item-name {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 3px;
+        line-height: 1.3;
+    }
+
+    .item-code {
+        font-size: 11px;
+        color: #aaa;
+    }
+
+    /* CONTROLE DE QUANTIDADE */
+    .item-qty {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #16213e;
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    .qty-btn {
+        background: #667eea;
+        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .qty-btn:hover {
+        background: #764ba2;
+        transform: scale(1.1);
+    }
+
+    .qty-value {
+        min-width: 40px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    /* PREÇO */
+    .item-price {
+        text-align: right;
+    }
+
+    .unit-price {
+        font-size: 11px;
+        color: #aaa;
+        margin-bottom: 3px;
+    }
+
+    .total-price {
+        font-size: 16px;
+        font-weight: bold;
+        color: #4ecca3;
+    }
+
+    /* BOTÃO REMOVER */
+    .item-remove {
+        background: #e74c3c;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.3s;
+        flex-shrink: 0;
+    }
+
+    .item-remove:hover {
+        background: #c0392b;
+        transform: scale(1.1) rotate(90deg);
+    }
+
+    /* CARRINHO VAZIO */
+    .empty-cart {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+    }
+
+    .empty-cart-icon {
+        font-size: 60px;
+        margin-bottom: 15px;
+        opacity: 0.3;
+    }
+    
+    .empty-cart h3 {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+    
+    .empty-cart p {
+        font-size: 13px;
+    }
+
+    /* ÁREA DE PAGAMENTO - DIREITA */
+    .payment-area {
+        background: #0f3460;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .payment-header {
+        background: #1a2744;
+        padding: 12px 15px;
+        border-bottom: 2px solid #667eea;
+        flex-shrink: 0;
+    }
+
+    .payment-header h2 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    /* TOTAIS */
+    .total-section {
+        padding: 15px;
+        border-bottom: 2px solid #1a2744;
+        flex-shrink: 0;
+    }
+
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .total-row.main {
+        font-size: 24px;
+        font-weight: bold;
+        color: #4ecca3;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 2px solid #1a2744;
+    }
+
+    /* FORMAS DE PAGAMENTO */
+    .payment-methods {
+        padding: 12px 15px;
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+    }
+
+    .payment-methods h3 {
+        font-size: 14px;
+        color: #aaa;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .payment-btn {
+        width: 100%;
+        padding: 12px 15px;
+        margin-bottom: 8px;
+        background: #16213e;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .payment-btn:hover {
+        background: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .payment-btn.selected {
+        background: #667eea;
+        border-color: #4ecca3;
+    }
+
+    .payment-icon {
+        font-size: 20px;
+    }
+
+    /* BOTÕES DE AÇÃO */
+    .action-buttons {
+        padding: 12px 15px;
+        display: grid;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .action-btn {
+        padding: 12px 15px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #4ecca3 0%, #27ae60 100%);
+        color: white;
+        font-size: 15px;
+        padding: 14px;
+    }
+
+    .action-btn.primary:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 10px 30px rgba(78, 204, 163, 0.4);
+    }
+
+    .action-btn.secondary {
+        background: #e67e22;
+        color: white;
+    }
+
+    .action-btn.secondary:hover:not(:disabled) {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(230, 126, 34, 0.4);
+    }
+
+    .action-btn.danger {
+        background: #e74c3c;
+        color: white;
+    }
+
+    .action-btn.danger:hover:not(:disabled) {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    }
+
+    .action-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* MODAL */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #16213e;
+        padding: 40px;
+        border-radius: 20px;
+        max-width: 500px;
+        width: 90%;
+        animation: slideUp 0.3s ease;
+        border: 2px solid #667eea;
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(50px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .success-icon {
+        font-size: 80px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    /* ATALHOS */
+    .shortcuts {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(22, 33, 62, 0.95);
+        padding: 12px 15px;
+        border-radius: 12px;
+        border: 2px solid #667eea;
+        font-size: 11px;
+        backdrop-filter: blur(10px);
+        z-index: 100;
+        max-width: 200px;
+    }
+
+    .shortcuts h4 {
+        margin-bottom: 10px;
+        font-size: 14px;
+    }
+
+    .shortcuts div {
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .shortcut-key {
+        background: #667eea;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        min-width: 30px;
+        text-align: center;
+    }
+
+    /* MODAL DE VALIDAÇÃO PIROTECNIA */
+    .modal-pirotecnia {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .modal-pirotecnia.active {
+        display: flex;
+    }
+
+    .modal-pirotecnia-content {
+        background: #16213e;
+        padding: 40px;
+        border-radius: 20px;
+        max-width: 700px;
+        width: 100%;
+        animation: slideUp 0.3s ease;
+        border: 3px solid #e74c3c;
+        box-shadow: 0 10px 50px rgba(231, 76, 60, 0.3);
+    }
+
+    .modal-pirotecnia-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .modal-pirotecnia-header h2 {
+        color: #e74c3c;
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+
+    .modal-pirotecnia-header p {
+        color: #95a5a6;
+        font-size: 14px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .form-group label .required {
+        color: #e74c3c;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        background: #0f3460;
+        color: #fff;
+        font-size: 15px;
+        transition: all 0.3s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #764ba2;
+        box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+    }
+
+    .form-group input.error {
+        border-color: #e74c3c;
+    }
+
+    .form-group .error-message {
+        color: #e74c3c;
+        font-size: 12px;
+        margin-top: 5px;
+        display: none;
+    }
+
+    .form-group .error-message.show {
+        display: block;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .termo-responsabilidade {
+        background: #0f3460;
+        padding: 20px;
+        border-radius: 12px;
+        margin: 20px 0;
+        border: 2px solid #667eea;
+    }
+
+    .termo-responsabilidade h3 {
+        color: #fff;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+
+    .termo-responsabilidade p {
+        color: #95a5a6;
+        font-size: 13px;
+        line-height: 1.6;
+        margin-bottom: 10px;
+    }
+
+    .termo-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .termo-checkbox input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        margin-top: 2px;
+        cursor: pointer;
+    }
+
+    .termo-checkbox label {
+        color: #fff;
+        font-size: 14px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .alert-restricao {
+        background: rgba(231, 76, 60, 0.15);
+        border: 2px solid #e74c3c;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .alert-restricao-icon {
+        font-size: 32px;
+    }
+
+    .alert-restricao-text {
+        flex: 1;
+    }
+
+    .alert-restricao-text strong {
+        color: #e74c3c;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .alert-restricao-text p {
+        color: #95a5a6;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .item-restricao-badge {
+        display: inline-block;
+        background: #e74c3c;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-left: 10px;
+    }
+
+    /* RESPONSIVO */
+    @media (max-width: 1024px) {
+        .pdv-container {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pdv-container">
+    <!-- ÁREA PRINCIPAL -->
+    <div class="main-area">
+        <div class="pdv-header">
+            <div class="header-left">
+                <h1>🛒 PDV - Balcão</h1>
+                <p>Venda Rápida e Eficiente</p>
+            </div>
+            <div class="header-right">
+                <strong>{{ loja.nome }}</strong>
+                <span>Operador: {{ user.get_full_name|default:user.username }}</span>
+                {% if caixa_aberto %}
+                <span style="color: #4ecca3;">✓ Caixa Aberto</span>
+                <a href="{% url 'pdv:fechar_caixa' %}" style="color: #e74c3c; text-decoration: none; margin-left: 10px; font-size: 12px;">
+                    🔒 Fechar
+                </a>
+                {% else %}
+                <span style="color: #e74c3c;">⚠ Sem caixa aberto</span>
+                <a href="{% url 'pdv:abrir_caixa' %}" style="color: #4ecca3; text-decoration: none; margin-left: 10px; font-size: 12px;">
+                    💰 Abrir Caixa
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="search-area">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput"
+                    placeholder="Digite o código do produto (apenas números)..."
+                    autofocus
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                >
+            </div>
+        </div>
+
+        <div class="items-area" id="itemsArea">
+            <div class="empty-cart">
+                <div class="empty-cart-icon">🛒</div>
+                <h3>Carrinho vazio</h3>
+                <p>Escaneie ou busque produtos para começar a venda</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ÁREA DE PAGAMENTO -->
+    <div class="payment-area">
+        <div class="payment-header">
+            <h2>💳 Resumo da Venda</h2>
+        </div>
+
+        <div class="total-section">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span id="subtotal">R$ 0,00</span>
+            </div>
+            <div class="total-row main">
+                <span>TOTAL:</span>
+                <span id="total">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div class="payment-methods">
+            <h3>Forma de Pagamento</h3>
+            {% for tipo, nome in formas_pagamento %}
+            <button class="payment-btn" data-payment="{{ tipo }}">
+                <span class="payment-icon">
+                    {% if tipo == 'DINHEIRO' %}💵
+                    {% elif tipo == 'PIX' %}📱
+                    {% elif tipo == 'CARTAO_CREDITO' %}💳
+                    {% elif tipo == 'CARTAO_DEBITO' %}💳
+                    {% else %}💳{% endif %}
+                </span>
+                <span>{{ nome }}</span>
+            </button>
+            {% endfor %}
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn primary" id="finishBtn" {% if not caixa_aberto %}disabled{% endif %}>
+                ✅ FINALIZAR VENDA (F9)
+            </button>
+            <button class="action-btn secondary" id="budgetBtn">
+                📋 Gerar Orçamento (F8)
+            </button>
+            <button class="action-btn danger" id="clearBtn">
+                🗑️ Limpar Carrinho (ESC)
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE VALIDAÇÃO PIROTECNIA -->
+<div class="modal-pirotecnia" id="pirotecniaModal">
+    <div class="modal-pirotecnia-content">
+        <div class="modal-pirotecnia-header">
+            <h2>⚠️ Validação de Produto Pirotécnico</h2>
+            <p>Conforme R-105 do Exército Brasileiro, é obrigatório registrar dados do comprador</p>
+        </div>
+
+        <div class="alert-restricao">
+            <div class="alert-restricao-icon">🚨</div>
+            <div class="alert-restricao-text">
+                <strong>Produtos com Restrição de Exército</strong>
+                <p id="produtosRestricaoList">Os produtos selecionados exigem registro completo do comprador.</p>
+            </div>
+        </div>
+
+        <form id="formCompradorPirotecnia">
+            <div class="form-group">
+                <label>CPF <span class="required">*</span></label>
+                <input type="text" id="cpfInput" name="cpf" placeholder="000.000.000-00" maxlength="14" required>
+                <div class="error-message" id="cpfError"></div>
+            </div>
+
+            <div class="form-group">
+                <label>Nome Completo <span class="required">*</span></label>
+                <input type="text" id="nomeCompletoInput" name="nome_completo" placeholder="Nome completo do comprador" required>
+                <div class="error-message" id="nomeError"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Data de Nascimento <span class="required">*</span></label>
+                    <input type="date" id="dataNascimentoInput" name="data_nascimento" required>
+                    <div class="error-message" id="dataNascimentoError"></div>
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" id="telefoneInput" name="telefone" placeholder="(00) 00000-0000">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="emailInput" name="email" placeholder="email@exemplo.com">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo de Documento <span class="required">*</span></label>
+                    <select id="tipoDocumentoInput" name="tipo_documento" required>
+                        <option value="RG">RG - Registro Geral</option>
+                        <option value="CNH">CNH - Carteira Nacional de Habilitação</option>
+                        <option value="RNE">RNE - Registro Nacional de Estrangeiro</option>
+                        <option value="PASSAPORTE">Passaporte</option>
+                        <option value="OUTRO">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Número do Documento <span class="required">*</span></label>
+                    <input type="text" id="numeroDocumentoInput" name="numero_documento" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Órgão Emissor</label>
+                    <input type="text" id="orgaoEmissorInput" name="orgao_emissor" placeholder="Ex: SSP">
+                </div>
+                <div class="form-group">
+                    <label>UF Emissor</label>
+                    <input type="text" id="ufEmissorInput" name="uf_emissor" placeholder="BA" maxlength="2">
+                </div>
+            </div>
+
+            <div class="termo-responsabilidade">
+                <h3>📋 Termo de Responsabilidade</h3>
+                <p>
+                    Declaro que sou maior de 18 anos e que estou ciente de que a compra e uso de produtos 
+                    pirotécnicos com restrição do Exército Brasileiro estão sujeitos à legislação vigente 
+                    (R-105 do Exército Brasileiro).
+                </p>
+                <p>
+                    Comprometo-me a utilizar os produtos adquiridos de forma responsável e em conformidade 
+                    com as normas de segurança estabelecidas.
+                </p>
+                <div class="termo-checkbox">
+                    <input type="checkbox" id="aceiteTermoInput" name="aceite_termo" required>
+                    <label for="aceiteTermoInput">
+                        Li e aceito o termo de responsabilidade <span class="required">*</span>
+                    </label>
+                </div>
+            </div>
+
+            <div style="display: grid; gap: 12px; margin-top: 30px;">
+                <button type="submit" class="action-btn primary" id="confirmarCompradorBtn">
+                    ✅ Confirmar e Finalizar Venda
+                </button>
+                <button type="button" class="action-btn danger" onclick="fecharModalPirotecnia()">
+                    ❌ Cancelar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL DE PAGAMENTO EM DINHEIRO -->
+<div class="modal" id="pagamentoDinheiroModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="font-size: 60px; margin-bottom: 15px;">💵</div>
+            <h2 style="color: #2c3e50; margin-bottom: 10px;">Pagamento em Dinheiro</h2>
+            <p style="color: #7f8c8d;">Informe o valor recebido</p>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <strong>Total da Venda:</strong>
+                <span id="totalVendaModal" style="font-size: 20px; font-weight: bold; color: #2c3e50;">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600;">Valor Recebido (R$)</label>
+            <input 
+                type="number" 
+                id="valorRecebidoInput" 
+                step="0.01" 
+                min="0" 
+                style="width: 100%; padding: 15px; border: 2px solid #667eea; border-radius: 12px; font-size: 24px; font-weight: bold; text-align: right; color: #27ae60;"
+                autofocus
+            >
+        </div>
+
+        <div id="trocoContainer" style="display: none; background: #e8f5e9; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #27ae60;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 18px; color: #2c3e50;">Troco:</strong>
+                <span id="trocoValor" style="font-size: 32px; font-weight: bold; color: #27ae60;">R$ 0,00</span>
+            </div>
+        </div>
+
+        <div id="valorInsuficiente" style="display: none; background: #ffebee; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #e74c3c;">
+            <p style="color: #c0392b; margin: 0; text-align: center; font-weight: 600;">
+                ⚠️ Valor insuficiente! Faltam <span id="valorFaltante">R$ 0,00</span>
+            </p>
+        </div>
+
+        <div style="display: grid; gap: 12px;">
+            <button class="action-btn primary" id="confirmarPagamentoBtn" disabled>
+                ✅ Confirmar Pagamento
+            </button>
+            <button class="action-btn danger" onclick="fecharModalPagamento()">
+                ❌ Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE CONFIRMAÇÃO -->
+<div class="modal" id="confirmacaoModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="font-size: 60px; margin-bottom: 15px;">❓</div>
+            <h2 style="color: #2c3e50; margin-bottom: 10px;">Confirmar Venda</h2>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+            <div style="margin-bottom: 15px;">
+                <strong>Total da Venda:</strong>
+                <div style="font-size: 24px; font-weight: bold; color: #2c3e50; margin-top: 5px;" id="confirmTotalVenda">R$ 0,00</div>
+            </div>
+            <div id="confirmPagamentoDinheiro" style="display: none; margin-bottom: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <strong>Valor Recebido:</strong>
+                <div style="font-size: 20px; color: #27ae60; margin-top: 5px;" id="confirmValorRecebido">R$ 0,00</div>
+            </div>
+            <div id="confirmTroco" style="display: none; margin-bottom: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <strong>Troco:</strong>
+                <div style="font-size: 24px; font-weight: bold; color: #27ae60; margin-top: 5px;" id="confirmTrocoValor">R$ 0,00</div>
+            </div>
+            <div style="padding-top: 15px; border-top: 2px solid #667eea;">
+                <strong>Forma de Pagamento:</strong>
+                <div style="font-size: 18px; color: #667eea; margin-top: 5px;" id="confirmFormaPagamento">-</div>
+            </div>
+        </div>
+
+        <div style="display: grid; gap: 12px;">
+            <button class="action-btn primary" id="confirmarVendaBtn">
+                ✅ Sim, Confirmar Venda
+            </button>
+            <button class="action-btn danger" onclick="fecharModalConfirmacao()">
+                ❌ Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE SUCESSO -->
+<div class="modal" id="successModal">
+    <div class="modal-content">
+        <div class="success-icon">✅</div>
+        <h2 style="text-align: center; margin-bottom: 20px;">Venda Finalizada!</h2>
+        <div style="text-align: center;">
+            <p id="modalMessage">Pedido criado com sucesso</p>
+            <div style="font-size: 36px; color: #4ecca3; font-weight: bold; margin: 20px 0;" id="modalTotal">R$ 0,00</div>
+        </div>
+        <div style="display: grid; gap: 12px; margin-top: 30px;">
+            <button class="action-btn primary" onclick="closeModal()">
+                ✅ OK - Nova Venda
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ATALHOS -->
+<div class="shortcuts">
+    <h4>⌨️ Atalhos</h4>
+    <div><span class="shortcut-key">F9</span> Finalizar</div>
+    <div><span class="shortcut-key">F8</span> Orçamento</div>
+    <div><span class="shortcut-key">ESC</span> Limpar</div>
+    <div><span class="shortcut-key">F2</span> Buscar</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let cart = [];
+    let selectedPayment = null;
+    let produtosComRestricao = {}; // Armazena produtos com restrição: {produto_id: true}
+    let compradorPirotecnia = null; // Dados do comprador após validação
+    const lojaId = {{ loja.id }};
+    const caixaAberto = {% if caixa_aberto %}true{% else %}false{% endif %};
+
+    // BUSCA DE PRODUTOS
+    const searchInput = document.getElementById('searchInput');
+    
+    // Garantir que o campo está sempre habilitado para busca
+    if (searchInput) {
+        searchInput.disabled = false;
+        searchInput.readOnly = false;
+        searchInput.removeAttribute('disabled');
+        searchInput.removeAttribute('readonly');
+    }
+    
+    // Permitir apenas números no campo de busca
+    searchInput.addEventListener('input', function(e) {
+        // Remove tudo que não é número
+        e.target.value = e.target.value.replace(/\D/g, '');
+    });
+    
+    searchInput.addEventListener('keypress', async (e) => {
+        // Permite apenas números e teclas de controle
+        if (e.key !== 'Enter' && !/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+            e.preventDefault();
+            return;
+        }
+        
+        if (e.key === 'Enter') {
+            const term = searchInput.value.trim();
+            if (!term) {
+                alert('Digite o código do produto!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/pdv/produtos/?q=${encodeURIComponent(term)}`);
+                const data = await response.json();
+
+                if (data.produtos && data.produtos.length > 0) {
+                    addToCart(data.produtos[0]);
+                    searchInput.value = '';
+                    searchInput.focus();
+                } else {
+                    alert('Produto não encontrado! Verifique o código digitado.');
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            } catch (error) {
+                console.error('Erro ao buscar produto:', error);
+                alert('Erro ao buscar produto');
+                searchInput.focus();
+            }
+        }
+    });
+
+    // ADICIONAR AO CARRINHO
+    function addToCart(product) {
+        const existing = cart.find(item => item.id === product.id);
+
+        if (existing) {
+            existing.qty += 1;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.descricao,
+                code: product.codigo_interno || product.codigo_barras || '',
+                price: parseFloat(product.preco_venda_sugerido),
+                qty: 1,
+                possui_restricao_exercito: product.possui_restricao_exercito || false
+            });
+            
+            // Marca produto com restrição
+            if (product.possui_restricao_exercito) {
+                produtosComRestricao[product.id] = true;
+            }
+        }
+
+        renderCart();
+        updateTotals();
+    }
+
+    // RENDERIZAR CARRINHO
+    function renderCart() {
+        const itemsArea = document.getElementById('itemsArea');
+
+        if (cart.length === 0) {
+            itemsArea.innerHTML = `
+                <div class="empty-cart">
+                    <div class="empty-cart-icon">🛒</div>
+                    <h3>Carrinho vazio</h3>
+                    <p>Escaneie ou busque produtos para começar a venda</p>
+                </div>
+            `;
+            return;
+        }
+
+        itemsArea.innerHTML = cart.map((item, index) => `
+            <div class="item-row">
+                <div class="item-number">${index + 1}</div>
+                <div class="item-info">
+                    <div class="item-name">
+                        ${item.name}
+                        ${item.possui_restricao_exercito ? '<span class="item-restricao-badge">🚨 RESTRIÇÃO</span>' : ''}
+                    </div>
+                    <div class="item-code">Código: ${item.code}</div>
+                </div>
+                <div class="item-qty">
+                    <button class="qty-btn" onclick="changeQty(${item.id}, -1)">-</button>
+                    <span class="qty-value">${item.qty}</span>
+                    <button class="qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
+                </div>
+                <div class="item-price">
+                    <div class="unit-price">R$ ${item.price.toFixed(2)} un</div>
+                    <div class="total-price">R$ ${(item.price * item.qty).toFixed(2)}</div>
+                </div>
+                <button class="item-remove" onclick="removeItem(${item.id})">×</button>
+            </div>
+        `).join('');
+    }
+
+    // MUDAR QUANTIDADE
+    function changeQty(id, delta) {
+        const item = cart.find(i => i.id === id);
+        if (item) {
+            item.qty += delta;
+            if (item.qty <= 0) {
+                removeItem(id);
+            } else {
+                renderCart();
+                updateTotals();
+            }
+        }
+    }
+
+    // REMOVER ITEM
+    function removeItem(id) {
+        cart = cart.filter(i => i.id !== id);
+        delete produtosComRestricao[id];
+        renderCart();
+        updateTotals();
+    }
+
+    // ATUALIZAR TOTAIS
+    function updateTotals() {
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const total = subtotal;
+
+        document.getElementById('subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+        document.getElementById('total').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+
+        const hasItems = cart.length > 0;
+        document.getElementById('finishBtn').disabled = !hasItems || !selectedPayment || !caixaAberto;
+        document.getElementById('budgetBtn').disabled = !hasItems;
+    }
+
+    // SELEÇÃO DE PAGAMENTO
+    document.querySelectorAll('.payment-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedPayment = btn.dataset.payment;
+            updateTotals();
+        });
+    });
+
+    // VERIFICAR SE TEM PRODUTOS COM RESTRIÇÃO
+    function temProdutosComRestricao() {
+        return cart.some(item => item.possui_restricao_exercito);
+    }
+
+    // ABRIR MODAL DE VALIDAÇÃO PIROTECNIA
+    function abrirModalPirotecnia() {
+        const produtosRestricao = cart.filter(item => item.possui_restricao_exercito);
+        const listaProdutos = produtosRestricao.map(p => `• ${p.name}`).join('<br>');
+        document.getElementById('produtosRestricaoList').innerHTML = listaProdutos;
+        document.getElementById('pirotecniaModal').classList.add('active');
+        document.getElementById('cpfInput').focus();
+    }
+
+    // FECHAR MODAL DE VALIDAÇÃO PIROTECNIA
+    function fecharModalPirotecnia() {
+        document.getElementById('pirotecniaModal').classList.remove('active');
+        document.getElementById('formCompradorPirotecnia').reset();
+        compradorPirotecnia = null;
+    }
+
+    // MÁSCARA DE CPF
+    function aplicarMascaraCPF(input) {
+        let value = input.value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        }
+        input.value = value;
+    }
+
+    // Inicializar máscara de CPF
+    document.addEventListener('DOMContentLoaded', () => {
+        const cpfInput = document.getElementById('cpfInput');
+        if (cpfInput) {
+            cpfInput.addEventListener('input', (e) => {
+                aplicarMascaraCPF(e.target);
+            });
+        }
+    });
+
+    // Variáveis para pagamento
+    let valorRecebido = null;
+    let troco = 0;
+
+    // FINALIZAR VENDA
+    document.getElementById('finishBtn').addEventListener('click', async () => {
+        if (!selectedPayment || cart.length === 0 || !caixaAberto) return;
+
+        // Verifica se tem produtos com restrição e se já validou comprador
+        if (temProdutosComRestricao() && !compradorPirotecnia) {
+            abrirModalPirotecnia();
+            return;
+        }
+
+        // Se for pagamento em dinheiro, abre modal de pagamento
+        if (selectedPayment === 'DINHEIRO') {
+            abrirModalPagamentoDinheiro();
+        } else {
+            // Para outras formas de pagamento, vai direto para confirmação
+            abrirModalConfirmacao();
+        }
+    });
+
+    // ABRIR MODAL DE PAGAMENTO EM DINHEIRO
+    function abrirModalPagamentoDinheiro() {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        document.getElementById('totalVendaModal').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        document.getElementById('valorRecebidoInput').value = '';
+        document.getElementById('trocoContainer').style.display = 'none';
+        document.getElementById('valorInsuficiente').style.display = 'none';
+        document.getElementById('confirmarPagamentoBtn').disabled = true;
+        document.getElementById('pagamentoDinheiroModal').classList.add('active');
+        document.getElementById('valorRecebidoInput').focus();
+    }
+
+    // FECHAR MODAL DE PAGAMENTO
+    function fecharModalPagamento() {
+        document.getElementById('pagamentoDinheiroModal').classList.remove('active');
+        valorRecebido = null;
+        troco = 0;
+    }
+
+    // CALCULAR TROCO
+    document.getElementById('valorRecebidoInput').addEventListener('input', function(e) {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const recebido = parseFloat(e.target.value) || 0;
+        
+        if (recebido >= total) {
+            troco = recebido - total;
+            document.getElementById('trocoValor').textContent = `R$ ${troco.toFixed(2).replace('.', ',')}`;
+            document.getElementById('trocoContainer').style.display = 'block';
+            document.getElementById('valorInsuficiente').style.display = 'none';
+            document.getElementById('confirmarPagamentoBtn').disabled = false;
+            valorRecebido = recebido;
+        } else {
+            const faltante = total - recebido;
+            document.getElementById('valorFaltante').textContent = `R$ ${faltante.toFixed(2).replace('.', ',')}`;
+            document.getElementById('trocoContainer').style.display = 'none';
+            document.getElementById('valorInsuficiente').style.display = 'block';
+            document.getElementById('confirmarPagamentoBtn').disabled = true;
+            valorRecebido = null;
+        }
+    });
+
+    // CONFIRMAR PAGAMENTO EM DINHEIRO
+    document.getElementById('confirmarPagamentoBtn').addEventListener('click', () => {
+        if (valorRecebido && troco >= 0) {
+            fecharModalPagamento();
+            abrirModalConfirmacao();
+        }
+    });
+
+    // ABRIR MODAL DE CONFIRMAÇÃO
+    function abrirModalConfirmacao() {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        document.getElementById('confirmTotalVenda').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        
+        // Forma de pagamento
+        const formasPagamento = {
+            'DINHEIRO': '💵 Dinheiro',
+            'PIX': '📱 PIX',
+            'CARTAO_CREDITO': '💳 Cartão de Crédito',
+            'CARTAO_DEBITO': '💳 Cartão de Débito'
+        };
+        document.getElementById('confirmFormaPagamento').textContent = formasPagamento[selectedPayment] || selectedPayment;
+        
+        // Se for dinheiro, mostra valor recebido e troco
+        if (selectedPayment === 'DINHEIRO' && valorRecebido) {
+            document.getElementById('confirmPagamentoDinheiro').style.display = 'block';
+            document.getElementById('confirmValorRecebido').textContent = `R$ ${valorRecebido.toFixed(2).replace('.', ',')}`;
+            document.getElementById('confirmTroco').style.display = 'block';
+            document.getElementById('confirmTrocoValor').textContent = `R$ ${troco.toFixed(2).replace('.', ',')}`;
+        } else {
+            document.getElementById('confirmPagamentoDinheiro').style.display = 'none';
+            document.getElementById('confirmTroco').style.display = 'none';
+        }
+        
+        document.getElementById('confirmacaoModal').classList.add('active');
+    }
+
+    // FECHAR MODAL DE CONFIRMAÇÃO
+    function fecharModalConfirmacao() {
+        document.getElementById('confirmacaoModal').classList.remove('active');
+    }
+
+    // CONFIRMAR VENDA
+    document.getElementById('confirmarVendaBtn').addEventListener('click', async () => {
+        fecharModalConfirmacao();
+        await processarVenda();
+    });
+
+    // PROCESSAR VENDA
+    async function processarVenda() {
+        try {
+            const bodyData = {
+                loja_id: lojaId,
+                tipo_pagamento: selectedPayment,
+                itens: cart.map(item => ({
+                    produto_id: item.id,
+                    quantidade: item.qty,
+                    preco_unitario: item.price
+                }))
+            };
+
+            // Adiciona dados do comprador se houver produtos com restrição
+            if (compradorPirotecnia) {
+                bodyData.comprador_pirotecnia = compradorPirotecnia;
+            }
+
+            // Adiciona dados de pagamento em dinheiro
+            if (selectedPayment === 'DINHEIRO' && valorRecebido) {
+                bodyData.valor_recebido = valorRecebido;
+                bodyData.troco = troco;
+            }
+
+            const response = await fetch('{% url "pdv:finalizar_venda" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(bodyData)
+            });
+
+            const data = await response.json();
+
+            if (data.sucesso) {
+                let mensagem = data.mensagem;
+                if (selectedPayment === 'DINHEIRO' && valorRecebido) {
+                    mensagem += `\nValor recebido: R$ ${valorRecebido.toFixed(2).replace('.', ',')}\nTroco: R$ ${troco.toFixed(2).replace('.', ',')}`;
+                }
+                document.getElementById('modalMessage').textContent = mensagem;
+                document.getElementById('modalTotal').textContent = `R$ ${parseFloat(data.valor_total).toFixed(2).replace('.', ',')}`;
+                document.getElementById('successModal').classList.add('active');
+                fecharModalPirotecnia();
+                // Limpar valores de pagamento
+                valorRecebido = null;
+                troco = 0;
+            } else {
+                if (data.requer_validacao) {
+                    abrirModalPirotecnia();
+                } else {
+                    alert(data.erro || 'Erro ao finalizar venda');
+                }
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao finalizar venda');
+        }
+    }
+
+    // SUBMIT DO FORMULÁRIO DE COMPRADOR PIROTECNIA
+    document.getElementById('formCompradorPirotecnia').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = {
+            cpf: document.getElementById('cpfInput').value,
+            nome_completo: document.getElementById('nomeCompletoInput').value,
+            data_nascimento: document.getElementById('dataNascimentoInput').value,
+            telefone: document.getElementById('telefoneInput').value,
+            email: document.getElementById('emailInput').value,
+            tipo_documento: document.getElementById('tipoDocumentoInput').value,
+            numero_documento: document.getElementById('numeroDocumentoInput').value,
+            orgao_emissor: document.getElementById('orgaoEmissorInput').value,
+            uf_emissor: document.getElementById('ufEmissorInput').value,
+            aceite_termo: document.getElementById('aceiteTermoInput').checked
+        };
+
+        // Valida termo
+        if (!formData.aceite_termo) {
+            alert('É obrigatório aceitar o termo de responsabilidade');
+            return;
+        }
+
+        // Valida via API
+        try {
+            const response = await fetch('/api/v1/pdv/validar-comprador/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    cpf: formData.cpf,
+                    data_nascimento: formData.data_nascimento,
+                    nome_completo: formData.nome_completo
+                })
+            });
+
+            const validacao = await response.json();
+
+            if (validacao.valido) {
+                compradorPirotecnia = formData;
+                fecharModalPirotecnia();
+                await processarVenda();
+            } else {
+                // Mostra erros
+                if (validacao.erros) {
+                    Object.keys(validacao.erros).forEach(campo => {
+                        const errorElement = document.getElementById(campo + 'Error');
+                        const inputElement = document.getElementById(campo + 'Input');
+                        if (errorElement) {
+                            errorElement.textContent = validacao.erros[campo];
+                            errorElement.classList.add('show');
+                        }
+                        if (inputElement) {
+                            inputElement.classList.add('error');
+                        }
+                    });
+                } else {
+                    alert(validacao.erro || 'Erro ao validar dados');
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao validar comprador:', error);
+            alert('Erro ao validar dados do comprador');
+        }
+    });
+
+    // Limpar erros ao digitar
+    document.querySelectorAll('#formCompradorPirotecnia input').forEach(input => {
+        input.addEventListener('input', () => {
+            input.classList.remove('error');
+            const errorElement = document.getElementById(input.name + 'Error');
+            if (errorElement) {
+                errorElement.classList.remove('show');
+            }
+        });
+    });
+
+    // GERAR ORÇAMENTO
+    document.getElementById('budgetBtn').addEventListener('click', async () => {
+        if (cart.length === 0) return;
+
+        const nomeResponsavel = prompt('Nome do responsável pelo orçamento:', 'Cliente Balcão');
+        if (!nomeResponsavel) return;
+
+        try {
+            const response = await fetch('{% url "pdv:criar_orcamento_pdv" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    loja_id: lojaId,
+                    nome_responsavel: nomeResponsavel,
+                    itens: cart.map(item => ({
+                        produto_id: item.id,
+                        quantidade: item.qty,
+                        preco_unitario: item.price
+                    }))
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.sucesso) {
+                alert(data.mensagem);
+            } else {
+                alert(data.erro || 'Erro ao gerar orçamento');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao gerar orçamento');
+        }
+    });
+
+    // LIMPAR CARRINHO
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        if (cart.length === 0 || confirm('Deseja realmente limpar o carrinho?')) {
+            cart = [];
+            selectedPayment = null;
+            document.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('selected'));
+            renderCart();
+            updateTotals();
+            searchInput.focus();
+        }
+    });
+
+    // FECHAR MODAL
+    function closeModal() {
+        document.getElementById('successModal').classList.remove('active');
+        cart = [];
+        produtosComRestricao = {};
+        compradorPirotecnia = null;
+        selectedPayment = null;
+        valorRecebido = null;
+        troco = 0;
+        document.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('selected'));
+        renderCart();
+        updateTotals();
+        searchInput.focus();
+    }
+
+    // ATALHOS DE TECLADO
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F9') {
+            e.preventDefault();
+            if (!document.getElementById('finishBtn').disabled) {
+                document.getElementById('finishBtn').click();
+            }
+        } else if (e.key === 'F8') {
+            e.preventDefault();
+            if (!document.getElementById('budgetBtn').disabled) {
+                document.getElementById('budgetBtn').click();
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            document.getElementById('clearBtn').click();
+        } else if (e.key === 'F2') {
+            e.preventDefault();
+            if (searchInput) {
+                searchInput.disabled = false;
+                searchInput.readOnly = false;
+                searchInput.removeAttribute('disabled');
+                searchInput.removeAttribute('readonly');
+                searchInput.focus();
+                searchInput.select();
+            }
+        }
+    });
+
+    // Função auxiliar para pegar CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
