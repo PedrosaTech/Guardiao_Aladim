@@ -171,4 +171,3 @@ LOGOUT_REDIRECT_URL = '/admin/login/'
 # Deve ter no mínimo 32 caracteres ou será derivada via SHA256
 # Configure via variável de ambiente ENCRYPTION_KEY
 ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', 'django-insecure-encryption-key-change-me-in-production-min-32-chars')
-

@@ -239,3 +239,5 @@ class Command(BaseCommand):
                 f'  ⚠️  Aviso: Não foi possível criar arquivo de backup: {str(e)}'
             ))
 
+
+

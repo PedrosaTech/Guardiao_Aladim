@@ -110,3 +110,5 @@ class FieldEncryption:
             # Retorna o valor original para compatibilidade
             return encrypted_value
 
+
+
