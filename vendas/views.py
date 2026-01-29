@@ -9,10 +9,60 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import re
+import logging
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework import viewsets
 from .models import CondicaoPagamento, PedidoVenda, ItemPedidoVenda
 from .serializers import CondicaoPagamentoSerializer, PedidoVendaSerializer
+from .forms import RelatorioVendasForm
+from . import reports
+
+logger = logging.getLogger(__name__)
+
+
+def safe_decimal(value, default=Decimal('0.00')):
+    """
+    Converte valor do formulário para Decimal de forma segura.
+    Trata valores vazios, None e formatação brasileira (vírgula).
+    
+    Args:
+        value: Valor a converter (pode ser string, int, float, Decimal, None ou vazio)
+        default: Valor padrão se conversão falhar
+    
+    Returns:
+        Decimal: Valor convertido ou default
+    """
+    if value is None:
+        return default
+    
+    # Converter para string e limpar
+    value_str = str(value).strip()
+    
+    # Se vazio após strip, retornar default
+    if not value_str or value_str == '':
+        return default
+    
+    # Se já for Decimal, retornar direto
+    if isinstance(value, Decimal):
+        return value
+    
+    # Substituir vírgula por ponto (formatação brasileira)
+    value_str = value_str.replace(',', '.')
+    
+    # Remover caracteres não numéricos exceto ponto e sinal negativo
+    value_str = re.sub(r'[^\d.-]', '', value_str)
+    
+    # Se ficou vazio ou só tem símbolos, retornar default
+    if not value_str or value_str == '.' or value_str == '-' or value_str == '+':
+        return default
+    
+    try:
+        return Decimal(value_str)
+    except (ValueError, InvalidOperation, Exception):
+        return default
 
 
 class CondicaoPagamentoViewSet(viewsets.ModelViewSet):
@@ -82,7 +132,7 @@ def lista_pedidos(request):
     from django.contrib.auth import get_user_model
     
     User = get_user_model()
-    lojas = Loja.objects.filter(is_active=True)
+    lojas = Loja.objects.filter(is_active=True).select_related('empresa')
     clientes = Cliente.objects.filter(is_active=True)
     vendedores = User.objects.filter(is_active=True)
     
@@ -134,12 +184,108 @@ def detalhes_pedido(request, pedido_id):
     # Buscar itens
     itens = pedido.itens.filter(is_active=True).select_related('produto')
     
+    # Buscar nota fiscal associada (se existir)
+    nota_fiscal = None
+    try:
+        from fiscal.models import NotaFiscalSaida
+        nota_fiscal = NotaFiscalSaida.objects.filter(
+            pedido_venda=pedido,
+            is_active=True
+        ).first()
+    except:
+        pass
+    
     context = {
         'pedido': pedido,
         'itens': itens,
+        'nota_fiscal': nota_fiscal,
     }
     
     return render(request, 'vendas/detalhes_pedido.html', context)
+
+
+@login_required
+def relatorio_vendas_consolidado(request):
+    """
+    Relatório de vendas consolidado (somente pedidos FATURADO).
+    Inclui filtros e permite segmentar por fornecedor do código alternativo usado.
+    """
+    # Melhor esforço para filtrar por empresa (se existir contexto)
+    empresa = None
+    if hasattr(request.user, "empresa"):
+        empresa = getattr(request.user, "empresa", None)
+    if not empresa:
+        try:
+            from core.models import Empresa
+
+            empresa = Empresa.objects.filter(is_active=True).first()
+        except Exception:
+            empresa = None
+
+    form = RelatorioVendasForm(request.GET or None, empresa=empresa)
+    qs = reports.aplicar_filtros(reports.queryset_base_vendas(), form)
+
+    agrupar_por = "produto"
+    ordenar_por = "-valor_total"
+    if form.is_valid():
+        agrupar_por = form.cleaned_data.get("agrupar_por") or "produto"
+        ordenar_por = form.cleaned_data.get("ordenar_por") or "-valor_total"
+
+    dados_qs = reports.agregar(qs, agrupar_por=agrupar_por, ordenar_por=ordenar_por)
+    dados = list(dados_qs) if hasattr(dados_qs, "__iter__") else []
+
+    totais = reports.calcular_totais(qs)
+    produtos_top = reports.top_produtos(qs, limit=10)
+
+    codigos_alt_info = []
+    if form.is_valid() and form.cleaned_data.get("produto"):
+        codigos_alt_info = reports.codigos_alternativos_info(form.cleaned_data["produto"].id)
+
+    # exportações
+    export = request.GET.get("export")
+    filtros_desc = request.GET.urlencode()
+    if export == "excel":
+        return reports.exportar_excel(dados, totais, filtros_desc=filtros_desc)
+    if export == "pdf":
+        return reports.exportar_pdf(
+            request,
+            dados,
+            totais,
+            context_extra={
+                "filtros_desc": filtros_desc,
+            },
+        )
+
+    # json para charts (se necessário)
+    if request.GET.get("format") == "json":
+        return JsonResponse(
+            {
+                "dados": dados,
+                "totais": totais.__dict__,
+                "produtos_top": produtos_top,
+            },
+            encoder=DjangoJSONEncoder,
+            safe=True,
+        )
+
+    # querystring para manter filtros nos botões de export
+    querystring = request.GET.urlencode()
+    if querystring:
+        # removemos export se estiver presente para não acumular
+        q = request.GET.copy()
+        q.pop("export", None)
+        querystring = q.urlencode()
+
+    context = {
+        "form": form,
+        "dados": dados,
+        "totais": totais,
+        "produtos_top": produtos_top,
+        "codigos_alternativos_info": codigos_alt_info,
+        "dados_json": json.dumps(dados, cls=DjangoJSONEncoder),
+        "querystring": querystring,
+    }
+    return render(request, "vendas/relatorio_vendas.html", context)
 
 
 @login_required
@@ -150,7 +296,7 @@ def criar_pedido(request):
     from core.models import Loja
     from pessoas.models import Cliente
     
-    lojas = Loja.objects.filter(is_active=True)
+    lojas = Loja.objects.filter(is_active=True).select_related('empresa')
     clientes = Cliente.objects.filter(is_active=True)
     condicoes_pagamento = CondicaoPagamento.objects.filter(is_active=True)
     
@@ -233,7 +379,7 @@ def editar_pedido(request, pedido_id):
     from core.models import Loja
     from pessoas.models import Cliente
     
-    lojas = Loja.objects.filter(is_active=True)
+    lojas = Loja.objects.filter(is_active=True).select_related('empresa')
     clientes = Cliente.objects.filter(is_active=True)
     condicoes_pagamento = CondicaoPagamento.objects.filter(is_active=True)
     
@@ -283,19 +429,40 @@ def adicionar_item_pedido(request, pedido_id):
             from produtos.models import Produto
             
             produto_id = request.POST.get('produto_id')
-            quantidade = Decimal(str(request.POST.get('quantidade', 1)))
-            preco_unitario = Decimal(str(request.POST.get('preco_unitario', 0)))
-            desconto = Decimal(str(request.POST.get('desconto', 0)))
+            
+            # Converter valores com tratamento seguro
+            quantidade_str = request.POST.get('quantidade', '1')
+            quantidade = safe_decimal(quantidade_str, Decimal('1.00'))
+            
+            preco_unitario_str = request.POST.get('preco_unitario', '')
+            preco_unitario = safe_decimal(preco_unitario_str, Decimal('0.00'))
+            
+            desconto_str = request.POST.get('desconto', '0')
+            desconto = safe_decimal(desconto_str, Decimal('0.00'))
             
             if not produto_id:
                 messages.error(request, 'Produto é obrigatório.')
                 return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
+            
+            # Validar quantidade
+            if quantidade <= 0:
+                messages.error(request, 'Quantidade deve ser maior que zero.')
+                return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
             
             produto = Produto.objects.get(id=produto_id, is_active=True)
             
             # Se não informou preço, usar preço sugerido do produto
             if preco_unitario <= 0:
                 preco_unitario = produto.preco_venda_sugerido
+            
+            # Validar preço unitário
+            if preco_unitario <= 0:
+                messages.error(request, 'Preço unitário deve ser maior que zero.')
+                return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
+            
+            # Validar desconto não pode ser negativo
+            if desconto < 0:
+                desconto = Decimal('0.00')
             
             item = ItemPedidoVenda.objects.create(
                 pedido=pedido,
@@ -309,9 +476,15 @@ def adicionar_item_pedido(request, pedido_id):
             messages.success(request, f'Item "{produto.descricao}" adicionado com sucesso!')
             return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
         
+        except Produto.DoesNotExist:
+            messages.error(request, 'Produto não encontrado.')
+            return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
         except Exception as e:
+            import traceback
             messages.error(request, f'Erro ao adicionar item: {str(e)}')
-            return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
+            # Log do erro completo para debug
+            print(f"Erro completo: {traceback.format_exc()}")
+            return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
     
     # GET - mostrar formulário
     from produtos.models import Produto
@@ -340,9 +513,31 @@ def editar_item_pedido(request, pedido_id, item_id):
     
     if request.method == 'POST':
         try:
-            item.quantidade = Decimal(str(request.POST.get('quantidade', item.quantidade)))
-            item.preco_unitario = Decimal(str(request.POST.get('preco_unitario', item.preco_unitario)))
-            item.desconto = Decimal(str(request.POST.get('desconto', item.desconto)))
+            # Converter valores com tratamento seguro
+            quantidade_str = request.POST.get('quantidade', str(item.quantidade))
+            quantidade = safe_decimal(quantidade_str, item.quantidade)
+            
+            preco_unitario_str = request.POST.get('preco_unitario', str(item.preco_unitario))
+            preco_unitario = safe_decimal(preco_unitario_str, item.preco_unitario)
+            
+            desconto_str = request.POST.get('desconto', str(item.desconto))
+            desconto = safe_decimal(desconto_str, item.desconto)
+            
+            # Validações
+            if quantidade <= 0:
+                messages.error(request, 'Quantidade deve ser maior que zero.')
+                return redirect('vendas:editar_item_pedido', pedido_id=pedido.id, item_id=item.id)
+            
+            if preco_unitario <= 0:
+                messages.error(request, 'Preço unitário deve ser maior que zero.')
+                return redirect('vendas:editar_item_pedido', pedido_id=pedido.id, item_id=item.id)
+            
+            if desconto < 0:
+                desconto = Decimal('0.00')
+            
+            item.quantidade = quantidade
+            item.preco_unitario = preco_unitario
+            item.desconto = desconto
             item.updated_by = request.user
             item.save()
             
@@ -350,7 +545,10 @@ def editar_item_pedido(request, pedido_id, item_id):
             return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
         
         except Exception as e:
+            import traceback
             messages.error(request, f'Erro ao atualizar item: {str(e)}')
+            # Log do erro completo para debug
+            print(f"Erro completo: {traceback.format_exc()}")
             return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
     
     context = {
@@ -399,8 +597,11 @@ def remover_item_pedido(request, pedido_id, item_id):
 @require_http_methods(["POST"])
 def faturar_pedido(request, pedido_id):
     """
-    Fatura um pedido (muda status para FATURADO).
+    Fatura um pedido (muda status para FATURADO) e cria nota fiscal automaticamente.
     """
+    from django.db import transaction
+    from fiscal.services import criar_nfe_rascunho_para_pedido
+    
     pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
     
     if pedido.status == 'FATURADO':
@@ -412,12 +613,37 @@ def faturar_pedido(request, pedido_id):
         return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
     
     try:
-        pedido.status = 'FATURADO'
-        pedido.updated_by = request.user
-        pedido.save()
-        
-        messages.success(request, f'Pedido #{pedido.id} faturado com sucesso!')
+        with transaction.atomic():
+            # Criar nota fiscal antes de faturar
+            try:
+                nota_fiscal = criar_nfe_rascunho_para_pedido(pedido, usuario=request.user)
+                mensagem_nota = f' Nota Fiscal {nota_fiscal.numero}/{nota_fiscal.serie} criada.'
+            except Exception as e_nota:
+                # Se falhar ao criar nota, ainda fatura o pedido mas avisa
+                logger.warning(f"Erro ao criar nota fiscal para pedido {pedido.id}: {str(e_nota)}")
+                mensagem_nota = f' Atenção: Não foi possível criar a nota fiscal automaticamente: {str(e_nota)}'
+            
+            # Faturar pedido
+            pedido.status = 'FATURADO'
+            pedido.updated_by = request.user
+            pedido.save()
+            
+            messages.success(
+                request, 
+                f'Pedido #{pedido.id} faturado com sucesso!{mensagem_nota}'
+            )
+            
+            # Se criou nota, gerar títulos financeiros
+            try:
+                from financeiro.services.financial_service import FinancialService
+                FinancialService.gerar_titulos_de_venda(pedido, request.user)
+            except Exception as e_fin:
+                logger.warning(f"Erro ao gerar títulos financeiros para pedido {pedido.id}: {str(e_fin)}")
+                # Não bloqueia o faturamento se falhar ao gerar títulos
+                
     except Exception as e:
+        import traceback
+        logger.error(f"Erro ao faturar pedido {pedido.id}: {str(e)}\n{traceback.format_exc()}")
         messages.error(request, f'Erro ao faturar pedido: {str(e)}')
     
     return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
@@ -455,36 +681,44 @@ def cancelar_pedido(request, pedido_id):
 @require_http_methods(["GET"])
 def buscar_produtos_rapido(request):
     """
-    API para busca de produtos.
+    API para busca de produtos. Suporta código de barras principal/alternativo.
     """
     termo = request.GET.get('q', '').strip()
-    
+
     if not termo:
         return JsonResponse({'produtos': []})
-    
-    from produtos.models import Produto
-    from django.db.models import Q
-    
-    # Busca por código de barras, código interno ou descrição
-    produtos = Produto.objects.filter(
-        is_active=True
-    ).filter(
-        Q(codigo_barras=termo) |
-        Q(codigo_interno=termo) |
-        Q(descricao__icontains=termo)
-    )[:10]
-    
+
+    from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
+
+    if termo.isdigit() and len(termo) >= 8:
+        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=None)
+        if produto:
+            return JsonResponse({
+                'produtos': [{
+                    'id': produto.id,
+                    'codigo_interno': produto.codigo_interno,
+                    'codigo_barras': termo,
+                    'descricao': produto.descricao,
+                    'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                    'unidade_comercial': produto.unidade_comercial,
+                    'multiplicador': float(mult),
+                    'info_codigo': codigo_alt.descricao if codigo_alt else None,
+                }]
+            })
+
+    produtos = buscar_produtos_por_termo(termo, empresa=None, limit=10)
     resultados = []
-    for produto in produtos:
+    for p in produtos:
         resultados.append({
-            'id': produto.id,
-            'codigo_interno': produto.codigo_interno,
-            'codigo_barras': produto.codigo_barras or '',
-            'descricao': produto.descricao,
-            'preco_venda_sugerido': str(produto.preco_venda_sugerido),
-            'unidade_comercial': produto.unidade_comercial,
+            'id': p.id,
+            'codigo_interno': p.codigo_interno,
+            'codigo_barras': p.codigo_barras or '',
+            'descricao': p.descricao,
+            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'unidade_comercial': p.unidade_comercial,
+            'multiplicador': 1.0,
+            'info_codigo': None,
         })
-    
     return JsonResponse({'produtos': resultados})
 
 

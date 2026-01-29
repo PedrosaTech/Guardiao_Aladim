@@ -416,6 +416,27 @@
                 <span>R$ {{ impostos.valor_ipi|floatformat:2 }}</span>
             </div>
             {% endif %}
+            
+            {% if config_fiscal and config_fiscal.usar_reforma_2026 %}
+            <!-- ═══ REFORMA TRIBUTÁRIA 2026 ═══ -->
+            <div class="total-row" style="border-top: 2px solid #2980b9; padding-top: 10px; margin-top: 10px;">
+                <span style="font-weight: bold; color: #2980b9;">Base IBS:</span>
+                <span>R$ {{ impostos.base_ibs|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span style="font-weight: bold; color: #2980b9;">Valor IBS:</span>
+                <span>R$ {{ impostos.valor_ibs|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span style="font-weight: bold; color: #2980b9;">Base CBS:</span>
+                <span>R$ {{ impostos.base_cbs|floatformat:2 }}</span>
+            </div>
+            <div class="total-row">
+                <span style="font-weight: bold; color: #2980b9;">Valor CBS:</span>
+                <span>R$ {{ impostos.valor_cbs|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            
             <div class="total-row">
                 <span>Valor Total dos Produtos:</span>
                 <span>R$ {{ impostos.valor_produtos|floatformat:2 }}</span>

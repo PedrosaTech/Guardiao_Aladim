@@ -91,7 +91,7 @@
                 <label>Loja <span class="required">*</span></label>
                 <select name="loja" required>
                     {% for loja in lojas %}
-                    <option value="{{ loja.id }}" {% if pedido.loja.id == loja.id %}selected{% endif %}>{{ loja.nome_fantasia }}</option>
+                    <option value="{{ loja.id }}" {% if pedido.loja.id == loja.id %}selected{% endif %}>{{ loja.empresa.nome_fantasia }} - {{ loja.nome }}</option>
                     {% endfor %}
                 </select>
             </div>

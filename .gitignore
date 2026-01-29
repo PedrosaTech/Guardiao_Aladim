@@ -48,3 +48,10 @@ db.sqlite3-journal
 .DS_Store
 Thumbs.db
 
+# Gerador de produtos (CSVs regeneráveis)
+produtos_pirotecnia_reais.csv
+codigos_alternativos_reais.csv
+
+# Gerador de fornecedores (CSV regenerável)
+fornecedores_pirotecnia_gerados.csv
+fornecedores_pirotecnia.csv

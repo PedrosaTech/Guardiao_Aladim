@@ -269,22 +269,42 @@
                         <thead>
                             <tr>
                                 <th>Item</th>
-                                <th>Código</th>
                                 <th>Descrição</th>
-                                <th>Quantidade</th>
-                                <th>Preço Unit.</th>
+                                <th>Qtd</th>
+                                <th>Valor Unit.</th>
                                 <th>Total</th>
+                                {% if config_fiscal and config_fiscal.usar_reforma_2026 %}
+                                <th>IBS</th>
+                                <th>CBS</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody>
-                            {% for item in itens %}
+                            {% for item_data in itens %}
                             <tr>
                                 <td>{{ forloop.counter }}</td>
-                                <td>{{ item.produto.codigo_interno|default:"-" }}</td>
-                                <td>{{ item.produto.descricao }}</td>
-                                <td>{{ item.quantidade|floatformat:3 }}</td>
-                                <td class="text-right">R$ {{ item.preco_unitario|floatformat:2 }}</td>
-                                <td class="text-right">R$ {{ item.total|floatformat:2 }}</td>
+                                <td>
+                                    {{ item_data.descricao }}
+                                    {% if item_data.eh_produto %}
+                                        <small style="background: #3498db; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-left: 8px;">Produto</small>
+                                    {% elif item_data.eh_servico %}
+                                        <small style="background: #9b59b6; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-left: 8px;">Serviço</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item_data.quantidade|floatformat:3 }}</td>
+                                <td class="text-right">R$ {{ item_data.valor_unitario|floatformat:2 }}</td>
+                                <td class="text-right">R$ {{ item_data.total|floatformat:2 }}</td>
+                                
+                                {% if config_fiscal and config_fiscal.usar_reforma_2026 %}
+                                <td class="text-right">
+                                    R$ {{ item_data.impostos.valor_ibs|floatformat:2 }}
+                                    <small style="display: block; font-size: 0.85em; color: #666;">({{ item_data.impostos.aliquota_ibs|floatformat:2 }}%)</small>
+                                </td>
+                                <td class="text-right">
+                                    R$ {{ item_data.impostos.valor_cbs|floatformat:2 }}
+                                    <small style="display: block; font-size: 0.85em; color: #666;">({{ item_data.impostos.aliquota_cbs|floatformat:2 }}%)</small>
+                                </td>
+                                {% endif %}
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -341,13 +361,43 @@
                             <span>R$ {{ impostos.valor_ipi|floatformat:2 }}</span>
                         </div>
                         {% endif %}
+                        
+                        {% if config_fiscal and config_fiscal.usar_reforma_2026 %}
+                        <!-- ═══ REFORMA TRIBUTÁRIA 2026 ═══ -->
+                        <hr style="margin: 20px 0; border: 1px solid #ddd;">
+                        <h3 style="color: #2980b9; margin-bottom: 15px;">
+                            Reforma Tributária 2026 (CBS/IBS)
+                        </h3>
+                        {% if nota.status == 'AUTORIZADA' and nota.impostos_snapshot %}
+                        <div style="margin-bottom: 15px; padding: 8px 12px; background: #ecf0f1; border-radius: 5px; color: #2c3e50; font-size: 12px;">
+                            🔒 Valores congelados: Impostos calculados no momento da autorização.
+                        </div>
+                        {% endif %}
+                        <div class="total-row">
+                            <span>Base de Cálculo do IBS:</span>
+                            <span>R$ {{ impostos.base_ibs|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor do IBS:</span>
+                            <span>R$ {{ impostos.valor_ibs|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Base de Cálculo da CBS:</span>
+                            <span>R$ {{ impostos.base_cbs|floatformat:2 }}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Valor da CBS:</span>
+                            <span>R$ {{ impostos.valor_cbs|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        
                         <div class="total-row">
                             <span>Valor Total dos Produtos:</span>
                             <span>R$ {{ impostos.valor_produtos|floatformat:2 }}</span>
                         </div>
                         <div class="total-row">
                             <span>VALOR TOTAL DA NF-e:</span>
-                            <span>R$ {{ impostos.valor_total_nfe|floatformat:2 }}</span>
+                            <span>R$ {{ nota.valor_total|floatformat:2 }}</span>
                         </div>
                     </div>
                     {% if impostos.is_simples_nacional %}

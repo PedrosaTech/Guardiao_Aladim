@@ -261,6 +261,7 @@
                         </td>
                         <td>
                             <a href="{% url 'produtos:detalhes_produto' produto.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                            <a href="{% url 'produtos:produto_codigos_alternativos' produto.id %}" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px; margin-left: 6px;">Códigos</a>
                         </td>
                     </tr>
                     {% endfor %}

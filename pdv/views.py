@@ -5,10 +5,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.http import HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.template.loader import render_to_string
 from decimal import Decimal
 from datetime import timedelta
 import json
@@ -16,13 +18,21 @@ import logging
 
 from core.models import Loja
 from produtos.models import Produto
+from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
 from pessoas.models import Cliente
 from vendas.models import CondicaoPagamento
+from vendas.models import PedidoVenda
 from vendas.services import criar_pedido_venda_balcao
 from .models import CaixaSessao, Pagamento, CompradorPirotecnia, RegistroVendaPirotecnia
 from .validators import validar_cpf, formatar_cpf, calcular_idade, validar_idade_minima
 
 logger = logging.getLogger(__name__)
+
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
 
 
 @login_required
@@ -51,10 +61,11 @@ def pdv_view(request):
     
     # Formas de pagamento disponíveis
     formas_pagamento = Pagamento.TIPO_CHOICES
-    
+
     context = {
         'loja': loja,
         'caixa_aberto': caixa_aberto,
+        'caixa_sessao_id': caixa_aberto.id if caixa_aberto else None,
         'formas_pagamento': formas_pagamento,
     }
     return render(request, 'pdv/pdv.html', context)
@@ -210,37 +221,46 @@ def fechar_caixa(request, caixa_id=None):
 @require_http_methods(["GET"])
 def buscar_produto(request):
     """
-    Busca produto por código de barras, código interno ou descrição.
-    Usado pela API do PDV.
+    Busca produto por código de barras (principal/alternativo), código interno ou descrição.
+    Usado pela API do PDV. Suporta códigos alternativos.
     """
     termo = request.GET.get('q', '').strip()
-    
+
     if not termo:
         return JsonResponse({'erro': 'Termo de busca não informado'}, status=400)
-    
-    # Busca APENAS por código numérico (código interno ou código de barras)
-    # Remove espaços e caracteres não numéricos para busca mais flexível
-    termo_limpo = ''.join(filter(str.isdigit, termo))
-    
-    produtos = Produto.objects.filter(
-        is_active=True
-    ).filter(
-        Q(codigo_interno__icontains=termo_limpo) |
-        Q(codigo_barras__icontains=termo_limpo)
-    )[:10]
-    
+
+    if termo.isdigit() and len(termo) >= 8:
+        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=None)
+        if produto:
+            resultados = [{
+                'id': produto.id,
+                'codigo_interno': produto.codigo_interno,
+                'codigo_barras': termo,
+                'descricao': produto.descricao,
+                'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                'unidade_comercial': produto.unidade_comercial,
+                'possui_restricao_exercito': produto.possui_restricao_exercito,
+                'multiplicador': float(mult),
+                'info_codigo': codigo_alt.descricao if codigo_alt else None,
+                'codigo_alternativo_id': codigo_alt.id if codigo_alt else None,
+            }]
+            return JsonResponse({'produtos': resultados})
+
+    produtos = buscar_produtos_por_termo(termo, empresa=None, limit=10)
     resultados = []
-    for produto in produtos:
+    for p in produtos:
         resultados.append({
-            'id': produto.id,
-            'codigo_interno': produto.codigo_interno,
-            'codigo_barras': produto.codigo_barras or '',
-            'descricao': produto.descricao,
-            'preco_venda_sugerido': str(produto.preco_venda_sugerido),
-            'unidade_comercial': produto.unidade_comercial,
-            'possui_restricao_exercito': produto.possui_restricao_exercito,
+            'id': p.id,
+            'codigo_interno': p.codigo_interno,
+            'codigo_barras': p.codigo_barras or '',
+            'descricao': p.descricao,
+            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'unidade_comercial': p.unidade_comercial,
+            'possui_restricao_exercito': p.possui_restricao_exercito,
+            'multiplicador': 1.0,
+            'info_codigo': None,
+            'codigo_alternativo_id': None,
         })
-    
     return JsonResponse({'produtos': resultados})
 
 
@@ -361,9 +381,10 @@ def finalizar_venda(request):
     
     Valida se há caixa aberto e chama o serviço de criação de pedido.
     """
+    logger.info("finalizar_venda: POST recebido")
     try:
         data = json.loads(request.body)
-        
+
         # Validações básicas
         loja_id = data.get('loja_id')
         itens = data.get('itens', [])
@@ -587,3 +608,70 @@ def finalizar_venda(request):
     except Exception as e:
         logger.error(f"Erro ao processar requisição: {str(e)}", exc_info=True)
         return JsonResponse({'erro': 'Erro ao processar requisição'}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def cupom_fiscal(request, pedido_id: int):
+    """
+    Exibe o cupom fiscal (tela de impressão) para um pedido.
+    Usado pelo fluxo do PDV Tablet -> Balcão (window.open em nova aba).
+    """
+    pedido = get_object_or_404(
+        PedidoVenda.objects.select_related('loja', 'loja__empresa', 'cliente', 'vendedor'),
+        id=pedido_id,
+        is_active=True,
+    )
+    itens = pedido.itens.filter(is_active=True).select_related('produto')
+    pagamentos = pedido.pagamentos.filter(is_active=True).order_by('created_at')
+
+    context = {
+        'pedido': pedido,
+        'loja': pedido.loja,
+        'empresa': pedido.loja.empresa,
+        'cliente': getattr(pedido, 'cliente', None),
+        'itens': itens,
+        'pagamentos': pagamentos,
+        'autoprint': request.GET.get('autoprint') == '1',
+    }
+    return render(request, 'pdv/cupom_fiscal.html', context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def cupom_fiscal_pdf(request, pedido_id: int):
+    """
+    Gera o PDF do cupom fiscal (WeasyPrint).
+    """
+    if not WEASYPRINT_AVAILABLE:
+        return HttpResponse(
+            '<h1>Erro: WeasyPrint não instalado</h1>'
+            '<p>Para gerar PDFs, instale o weasyprint:</p>'
+            '<pre>pip install weasyprint</pre>',
+            status=500,
+        )
+
+    pedido = get_object_or_404(
+        PedidoVenda.objects.select_related('loja', 'loja__empresa', 'cliente', 'vendedor'),
+        id=pedido_id,
+        is_active=True,
+    )
+    itens = pedido.itens.filter(is_active=True).select_related('produto')
+    pagamentos = pedido.pagamentos.filter(is_active=True).order_by('created_at')
+
+    context = {
+        'pedido': pedido,
+        'loja': pedido.loja,
+        'empresa': pedido.loja.empresa,
+        'cliente': getattr(pedido, 'cliente', None),
+        'itens': itens,
+        'pagamentos': pagamentos,
+    }
+
+    html_string = render_to_string('pdv/cupom_fiscal_pdf.html', context)
+    base_url = request.build_absolute_uri('/')
+    pdf = HTML(string=html_string, base_url=base_url).write_pdf()
+
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="Cupom_{pedido.id}.pdf"'
+    return response

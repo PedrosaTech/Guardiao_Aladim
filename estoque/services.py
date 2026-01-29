@@ -171,6 +171,7 @@ def registrar_saida_estoque_para_pedido(
         if estoque_atual.quantidade < item.quantidade:
             raise ValueError(
                 f"Estoque insuficiente para produto {produto.codigo_interno} ({produto.descricao}). "
+                f"Local: {local_estoque.nome} (Loja: {local_estoque.loja.nome}). "
                 f"Disponível: {estoque_atual.quantidade}, Solicitado: {item.quantidade}"
             )
         

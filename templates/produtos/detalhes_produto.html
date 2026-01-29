@@ -50,6 +50,20 @@
         .btn-secondary:hover {
             background: #7f8c8d;
         }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background: #138496;
+        }
         .content-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -148,7 +162,9 @@
                     {{ produto.codigo_interno|default:"Sem código" }} • {{ produto.categoria.nome }}
                 </div>
             </div>
-            <div>
+            <div style="display: flex; gap: 10px;">
+                <a href="{% url 'produtos:produto_editar' produto.id %}" class="btn btn-primary">Editar</a>
+                <a href="{% url 'produtos:produto_codigos_alternativos' produto.id %}" class="btn btn-info">Códigos alternativos</a>
                 <a href="{% url 'produtos:lista_produtos' %}" class="btn btn-secondary">Voltar</a>
             </div>
         </div>
@@ -304,9 +320,11 @@
                 {% if estoques %}
                 <div class="card">
                     <h2>Estoque Atual</h2>
+                    <p class="text-muted" style="margin-bottom: 12px; font-size: 0.9rem;">O PDV baixa estoque do <strong>local da loja da venda</strong>. Estoque em outra loja não é usado.</p>
                     <table class="table">
                         <thead>
                             <tr>
+                                <th>Loja</th>
                                 <th>Local</th>
                                 <th>Quantidade</th>
                             </tr>
@@ -314,6 +332,7 @@
                         <tbody>
                             {% for estoque in estoques %}
                             <tr>
+                                <td>{{ estoque.local_estoque.loja.nome }}</td>
                                 <td>{{ estoque.local_estoque.nome }}</td>
                                 <td>{{ estoque.quantidade|floatformat:3 }}</td>
                             </tr>

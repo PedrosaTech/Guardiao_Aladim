@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Editar {{ produto.descricao|truncatewords:8 }} - Guardião Aladin{% endblock %}
+{% block page_title %}Editar Produto{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'produtos:lista_produtos' %}">Produtos</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'produtos:detalhes_produto' produto.id %}">{{ produto.codigo_interno|default:produto.id }}</a></li>
+            <li class="breadcrumb-item active">Editar</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">Editar produto</h4>
+        <div class="btn-toolbar gap-2">
+            <a href="{% url 'produtos:produto_codigos_alternativos' produto.id %}" class="btn btn-outline-primary">
+                <i class="bi bi-upc-scan"></i> Códigos alternativos
+            </a>
+            <a href="{% url 'produtos:produto_inativar' produto.id %}" class="btn btn-outline-danger">
+                <i class="bi bi-x-circle"></i> Inativar
+            </a>
+        </div>
+    </div>
+
+    <form method="post" class="mb-4">
+        {% csrf_token %}
+        <div class="card mb-3">
+            <div class="card-header"><strong>Informações básicas</strong></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-2">{{ form.empresa.label_tag }}{{ form.empresa }}{{ form.empresa.errors }}</div>
+                    <div class="col-md-2">{{ form.loja.label_tag }}{{ form.loja }}{{ form.loja.errors }}</div>
+                    <div class="col-md-2">{{ form.categoria.label_tag }}{{ form.categoria }}{{ form.categoria.errors }}</div>
+                    <div class="col-md-2">{{ form.codigo_interno.label_tag }}{{ form.codigo_interno }}{{ form.codigo_interno.errors }}</div>
+                    <div class="col-md-2">{{ form.codigo_barras.label_tag }}{{ form.codigo_barras }}{{ form.codigo_barras.errors }}</div>
+                </div>
+                <div class="mt-2">{{ form.descricao.label_tag }}{{ form.descricao }}{{ form.descricao.errors }}</div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><strong>Pirotecnia</strong></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-2">{{ form.classe_risco.label_tag }}{{ form.classe_risco }}{{ form.classe_risco.errors }}</div>
+                    <div class="col-md-2">{{ form.subclasse_risco.label_tag }}{{ form.subclasse_risco }}</div>
+                    <div class="col-md-2">{{ form.numero_lote.label_tag }}{{ form.numero_lote }}</div>
+                    <div class="col-md-2">{{ form.validade.label_tag }}{{ form.validade }}</div>
+                    <div class="col-md-2">{{ form.numero_certificado_exercito.label_tag }}{{ form.numero_certificado_exercito }}</div>
+                    <div class="col-md-2 form-check mt-4">{{ form.possui_restricao_exercito }}{{ form.possui_restricao_exercito.label_tag }}</div>
+                </div>
+                <div class="mt-2">{{ form.condicoes_armazenamento.label_tag }}{{ form.condicoes_armazenamento }}</div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><strong>Fiscais (NCM, CFOP)</strong></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-2">{{ form.ncm.label_tag }}{{ form.ncm }}{{ form.ncm.errors }}</div>
+                    <div class="col-md-2">{{ form.cest.label_tag }}{{ form.cest }}</div>
+                    <div class="col-md-2">{{ form.cfop_venda_dentro_uf.label_tag }}{{ form.cfop_venda_dentro_uf }}{{ form.cfop_venda_dentro_uf.errors }}</div>
+                    <div class="col-md-2">{{ form.cfop_venda_fora_uf.label_tag }}{{ form.cfop_venda_fora_uf }}</div>
+                    <div class="col-md-1">{{ form.unidade_comercial.label_tag }}{{ form.unidade_comercial }}</div>
+                    <div class="col-md-1">{{ form.origem.label_tag }}{{ form.origem }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><strong>Tributos</strong></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-2">{{ form.csosn_cst.label_tag }}{{ form.csosn_cst }}</div>
+                    <div class="col-md-2">{{ form.aliquota_icms.label_tag }}{{ form.aliquota_icms }}</div>
+                    <div class="col-md-2">{{ form.icms_st_cst.label_tag }}{{ form.icms_st_cst }}</div>
+                    <div class="col-md-2">{{ form.aliquota_icms_st.label_tag }}{{ form.aliquota_icms_st }}</div>
+                    <div class="col-md-2">{{ form.pis_cst.label_tag }}{{ form.pis_cst }}</div>
+                    <div class="col-md-2">{{ form.aliquota_pis.label_tag }}{{ form.aliquota_pis }}</div>
+                    <div class="col-md-2">{{ form.cofins_cst.label_tag }}{{ form.cofins_cst }}</div>
+                    <div class="col-md-2">{{ form.aliquota_cofins.label_tag }}{{ form.aliquota_cofins }}</div>
+                    <div class="col-md-2">{{ form.ipi_venda_cst.label_tag }}{{ form.ipi_venda_cst }}</div>
+                    <div class="col-md-2">{{ form.aliquota_ipi_venda.label_tag }}{{ form.aliquota_ipi_venda }}</div>
+                    <div class="col-md-2">{{ form.ipi_compra_cst.label_tag }}{{ form.ipi_compra_cst }}</div>
+                    <div class="col-md-2">{{ form.aliquota_ipi_compra.label_tag }}{{ form.aliquota_ipi_compra }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><strong>Reforma 2026</strong></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-2">{{ form.cclass_trib.label_tag }}{{ form.cclass_trib }}</div>
+                    <div class="col-md-2">{{ form.cst_ibs.label_tag }}{{ form.cst_ibs }}</div>
+                    <div class="col-md-2">{{ form.cst_cbs.label_tag }}{{ form.cst_cbs }}</div>
+                    <div class="col-md-2">{{ form.aliquota_ibs.label_tag }}{{ form.aliquota_ibs }}</div>
+                    <div class="col-md-2">{{ form.aliquota_cbs.label_tag }}{{ form.aliquota_cbs }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><strong>Comercial</strong></div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-4">{{ form.preco_venda_sugerido.label_tag }}{{ form.preco_venda_sugerido }}{{ form.preco_venda_sugerido.errors }}</div>
+                    <div class="col-md-8">{{ form.observacoes.label_tag }}{{ form.observacoes }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+            <a href="{% url 'produtos:detalhes_produto' produto.id %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

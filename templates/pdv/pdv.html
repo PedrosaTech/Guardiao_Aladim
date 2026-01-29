@@ -497,6 +497,46 @@
         to { transform: translateY(0); opacity: 1; }
     }
 
+    /* Modal Cupom Fiscal */
+    .modal-fiscal-header { margin-bottom: 16px; }
+    .modal-fiscal-header h2 { margin: 0; font-size: 1.25rem; }
+    .modal-fiscal-body { margin-bottom: 20px; }
+    .modal-fiscal-info { color: #aaa; font-size: 14px; margin-bottom: 12px; }
+    .modal-fiscal-label { margin-bottom: 12px; }
+    .modal-fiscal-aviso { color: #ffc107; font-size: 13px; margin-top: 12px; }
+    .modal-fiscal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+    .form-check-fiscal { display: flex; flex-direction: column; gap: 10px; }
+    .form-check-fiscal-item {
+        padding: 12px 14px;
+        border: 2px solid #0f3460;
+        border-radius: 8px;
+        cursor: pointer;
+        background: #1a1a2e;
+    }
+    .form-check-fiscal-item:hover { border-color: #667eea; background: #16213e; }
+    .form-check-fiscal-item input { margin-right: 10px; }
+    .form-check-fiscal-item span { display: block; margin-bottom: 2px; }
+    .form-check-fiscal-item small { color: #888; font-size: 12px; }
+    .div-cpf-cnpj {
+        margin-top: 16px;
+        padding-left: 14px;
+        border-left: 4px solid #ffc107;
+        background: rgba(255, 193, 7, 0.08);
+        padding: 12px 14px;
+        border-radius: 0 8px 8px 0;
+    }
+    .div-cpf-cnpj label { display: block; margin-bottom: 6px; }
+    .div-cpf-cnpj input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 6px;
+        border: 2px solid #667eea;
+        background: #16213e;
+        color: #fff;
+        margin-bottom: 6px;
+    }
+    .div-cpf-cnpj small { color: #888; font-size: 12px; }
+
     .success-icon {
         font-size: 80px;
         text-align: center;
@@ -740,6 +780,8 @@
 {% endblock %}
 
 {% block content %}
+{% load static %}
+<div id="areaVendaNormal">
 <div class="pdv-container">
     <!-- ÁREA PRINCIPAL -->
     <div class="main-area">
@@ -823,6 +865,9 @@
         </div>
 
         <div class="action-buttons">
+            <button type="button" class="action-btn secondary" id="btnBuscarPedidoTablet" {% if not caixa_aberto %}disabled{% endif %} title="Buscar pedido do tablet para efetivar no caixa">
+                📱 Buscar Pedido Tablet
+            </button>
             <button class="action-btn primary" id="finishBtn" {% if not caixa_aberto %}disabled{% endif %}>
                 ✅ FINALIZAR VENDA (F9)
             </button>
@@ -960,10 +1005,10 @@
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600;">Valor Recebido (R$)</label>
             <input 
-                type="number" 
+                type="text" 
+                inputmode="decimal"
                 id="valorRecebidoInput" 
-                step="0.01" 
-                min="0" 
+                placeholder="0,00"
                 style="width: 100%; padding: 15px; border: 2px solid #667eea; border-radius: 12px; font-size: 24px; font-weight: bold; text-align: right; color: #27ae60;"
                 autofocus
             >
@@ -1047,6 +1092,66 @@
         </div>
     </div>
 </div>
+</div>
+
+<div id="areaPedidoTablet" style="display: none; padding: 20px; max-width: 900px; margin: 0 auto;"></div>
+
+<!-- MODAL BUSCAR PEDIDO TABLET -->
+<div class="modal" id="modalBuscarTablet">
+    <div class="modal-content" style="max-width: 420px;">
+        <h2 style="margin-bottom: 12px;">📱 Buscar Pedido do Tablet</h2>
+        <p style="color: #aaa; margin-bottom: 16px; font-size: 14px;">Digite o número do pedido que o atendente passou para o cliente.</p>
+        <label style="display: block; margin-bottom: 6px;">Número do pedido</label>
+        <input type="number" id="numeroPedidoTablet" placeholder="Ex: 42" min="1" style="width: 100%; padding: 12px; font-size: 18px; margin-bottom: 12px; border-radius: 8px; border: 2px solid #667eea; background: #16213e; color: #fff;">
+        <div id="erroBuscaTablet" class="error-message" style="display: none; margin-bottom: 12px; color: #e74c3c;"></div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="action-btn danger" id="btnFecharModalBuscarTablet">Cancelar</button>
+            <button type="button" class="action-btn primary" id="btnBuscarTabletConfirmar">🔍 Buscar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL LOADING -->
+<div class="modal" id="modalLoadingTablet" style="pointer-events: auto;">
+    <div class="modal-content" style="text-align: center; max-width: 320px;">
+        <p style="font-size: 18px; margin-bottom: 16px;">⏳ <span id="loadingMessageTablet">Processando...</span></p>
+    </div>
+</div>
+
+<!-- MODAL CUPOM FISCAL (tablet -> balcão) -->
+<div class="modal" id="modalFiscal">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-fiscal-header">
+            <h2>🧾 Cupom Fiscal</h2>
+        </div>
+        <div class="modal-fiscal-body">
+            <p class="modal-fiscal-info"><strong>Documentos:</strong> SAT-CF-e, NFC-e</p>
+            <p class="modal-fiscal-label"><strong>Emitir cupom fiscal para esta venda?</strong></p>
+            <div class="form-check-fiscal">
+                <label class="form-check-fiscal-item">
+                    <input type="radio" name="fiscal" id="fiscal-sim" value="sim" checked onchange="typeof toggleCpfCnpj === 'function' && toggleCpfCnpj()">
+                    <span><strong>Sim</strong>, emitir cupom fiscal</span>
+                    <small>Venda com documento fiscal</small>
+                </label>
+                <label class="form-check-fiscal-item">
+                    <input type="radio" name="fiscal" id="fiscal-nao" value="nao" onchange="typeof toggleCpfCnpj === 'function' && toggleCpfCnpj()">
+                    <span><strong>Não</strong>, venda sem cupom</span>
+                    <small>Consumidor final</small>
+                </label>
+            </div>
+            <div id="div-cpf-cnpj" class="div-cpf-cnpj">
+                <label for="cpf-cnpj-nota">CPF/CNPJ na Nota (opcional)</label>
+                <input type="text" id="cpf-cnpj-nota" placeholder="000.000.000-00 ou 00.000.000/0000-00" maxlength="18">
+                <small>Deixe em branco se o cliente não informar</small>
+            </div>
+            <p class="modal-fiscal-aviso">Cupom será gerado após confirmar.</p>
+        </div>
+        <div class="modal-fiscal-footer">
+            <button type="button" class="action-btn danger" id="btnFecharModalFiscal" onclick="typeof fecharModalFiscal === 'function' && fecharModalFiscal()">Cancelar</button>
+            <button type="button" class="action-btn primary" id="btnConfirmarFiscal" onclick="typeof confirmarEfetivarComFiscal === 'function' && confirmarEfetivarComFiscal()">Confirmar e Efetivar</button>
+        </div>
+    </div>
+</div>
 
 <!-- ATALHOS -->
 <div class="shortcuts">
@@ -1066,6 +1171,7 @@
     let compradorPirotecnia = null; // Dados do comprador após validação
     const lojaId = {{ loja.id }};
     const caixaAberto = {% if caixa_aberto %}true{% else %}false{% endif %};
+    const caixaSessaoId = {{ caixa_sessao_id|default:'null' }};
 
     // BUSCA DE PRODUTOS
     const searchInput = document.getElementById('searchInput');
@@ -1103,7 +1209,7 @@
                 const data = await response.json();
 
                 if (data.produtos && data.produtos.length > 0) {
-                    addToCart(data.produtos[0]);
+                    addToCart(data.produtos[0], term);
                     searchInput.value = '';
                     searchInput.focus();
                 } else {
@@ -1120,19 +1226,35 @@
     });
 
     // ADICIONAR AO CARRINHO
-    function addToCart(product) {
-        const existing = cart.find(item => item.id === product.id);
+    function addToCart(product, codigoBarrasUsado) {
+        const codigoAltId = (product && product.codigo_alternativo_id != null) ? product.codigo_alternativo_id : null;
+        const codigoUsado = (codigoBarrasUsado != null ? String(codigoBarrasUsado) : (product && product.codigo_barras ? String(product.codigo_barras) : '')).trim();
+        const key = `${product.id}|${codigoAltId || ''}|${codigoUsado || ''}`;
+        const existing = cart.find(item => item.key === key);
+        const multRaw = (product && product.multiplicador != null) ? product.multiplicador : 1;
+        let inc = parseFloat(multRaw);
+        if (!Number.isFinite(inc) || inc <= 0) inc = 1;
+        // arredondar para 3 casas (quantidade no backend aceita 3 decimais)
+        inc = Math.round(inc * 1000) / 1000;
 
         if (existing) {
-            existing.qty += 1;
+            existing.qty = Math.round((existing.qty + inc) * 1000) / 1000;
+            // mantém o "último" código/descrição usados (útil quando alternativo)
+            existing.code = product.codigo_interno || product.codigo_barras || existing.code || '';
+            existing.info_codigo = product.info_codigo || existing.info_codigo || null;
         } else {
             cart.push({
+                key,
                 id: product.id,
                 name: product.descricao,
                 code: product.codigo_interno || product.codigo_barras || '',
                 price: parseFloat(product.preco_venda_sugerido),
-                qty: 1,
-                possui_restricao_exercito: product.possui_restricao_exercito || false
+                qty: inc,
+                possui_restricao_exercito: product.possui_restricao_exercito || false,
+                info_codigo: product.info_codigo || null,
+                codigo_barras_usado: codigoUsado || null,
+                codigo_alternativo_id: codigoAltId,
+                multiplicador_aplicado: inc
             });
             
             // Marca produto com restrição
@@ -1160,6 +1282,22 @@
             return;
         }
 
+        const fmtQty = (q) => {
+            const n = Number(q);
+            if (!Number.isFinite(n)) return '0';
+            return Number.isInteger(n) ? String(n) : n.toFixed(3).replace('.', ',');
+        };
+        const fmtScans = (qty, mult) => {
+            const q = Number(qty);
+            const m = Number(mult);
+            if (!Number.isFinite(q) || !Number.isFinite(m) || m <= 0) return null;
+            const scans = q / m;
+            if (!Number.isFinite(scans)) return null;
+            // se for “quase inteiro”, mostrar como inteiro
+            const rounded = Math.round(scans * 1000) / 1000;
+            return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(3).replace('.', ',');
+        };
+
         itemsArea.innerHTML = cart.map((item, index) => `
             <div class="item-row">
                 <div class="item-number">${index + 1}</div>
@@ -1168,29 +1306,42 @@
                         ${item.name}
                         ${item.possui_restricao_exercito ? '<span class="item-restricao-badge">🚨 RESTRIÇÃO</span>' : ''}
                     </div>
-                    <div class="item-code">Código: ${item.code}</div>
+                    <div class="item-code">
+                        Código: ${item.code}
+                        ${item.info_codigo ? `<span style="color:#aaa;"> (${item.info_codigo})</span>` : ''}
+                    </div>
+                    ${item.codigo_barras_usado ? `
+                        <div class="item-code" style="margin-top:4px;">
+                            <span style="color:#aaa;">Leitura:</span>
+                            <span style="background:#16213e;border:1px solid #0f3460;border-radius:6px;padding:2px 6px;margin-left:6px;">${item.codigo_barras_usado}</span>
+                            ${item.codigo_alternativo_id ? `<span style="background:#0f3460;border-radius:6px;padding:2px 6px;margin-left:6px;">${fmtQty(item.multiplicador_aplicado)}x</span>` : ''}
+                        </div>
+                        ${item.codigo_alternativo_id ? `<div class="item-code" style="color:#aaa;margin-top:2px;">${fmtScans(item.qty, item.multiplicador_aplicado) || '—'} leitura(s) × ${fmtQty(item.multiplicador_aplicado)} = ${fmtQty(item.qty)} unidade(s)</div>` : ''}
+                    ` : ''}
                 </div>
                 <div class="item-qty">
-                    <button class="qty-btn" onclick="changeQty(${item.id}, -1)">-</button>
-                    <span class="qty-value">${item.qty}</span>
-                    <button class="qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
+                    <button class="qty-btn" onclick="changeQty('${item.key}', -1)">-</button>
+                    <span class="qty-value">${fmtQty(item.qty)}</span>
+                    <button class="qty-btn" onclick="changeQty('${item.key}', 1)">+</button>
                 </div>
                 <div class="item-price">
                     <div class="unit-price">R$ ${item.price.toFixed(2)} un</div>
                     <div class="total-price">R$ ${(item.price * item.qty).toFixed(2)}</div>
                 </div>
-                <button class="item-remove" onclick="removeItem(${item.id})">×</button>
+                <button class="item-remove" onclick="removeItem('${item.key}')">×</button>
             </div>
         `).join('');
     }
 
     // MUDAR QUANTIDADE
-    function changeQty(id, delta) {
-        const item = cart.find(i => i.id === id);
+    function changeQty(key, delta) {
+        const item = cart.find(i => i.key === key);
         if (item) {
-            item.qty += delta;
+            const step = (item.codigo_alternativo_id ? Number(item.multiplicador_aplicado) : 1);
+            const inc = (Number.isFinite(step) && step > 0) ? step : 1;
+            item.qty = Math.round((item.qty + (delta * inc)) * 1000) / 1000;
             if (item.qty <= 0) {
-                removeItem(id);
+                removeItem(key);
             } else {
                 renderCart();
                 updateTotals();
@@ -1199,9 +1350,14 @@
     }
 
     // REMOVER ITEM
-    function removeItem(id) {
-        cart = cart.filter(i => i.id !== id);
-        delete produtosComRestricao[id];
+    function removeItem(key) {
+        const item = cart.find(i => i.key === key);
+        cart = cart.filter(i => i.key !== key);
+        if (item) {
+            // remove flag de restrição apenas se não houver mais nenhum item desse produto no carrinho
+            const stillHas = cart.some(i => i.id === item.id && i.possui_restricao_exercito);
+            if (!stillHas) delete produtosComRestricao[item.id];
+        }
         renderCart();
         updateTotals();
     }
@@ -1244,10 +1400,11 @@
     }
 
     // FECHAR MODAL DE VALIDAÇÃO PIROTECNIA
-    function fecharModalPirotecnia() {
+    // keepComprador=true: não zera compradorPirotecnia (ex.: antes de processarVenda)
+    function fecharModalPirotecnia(keepComprador) {
         document.getElementById('pirotecniaModal').classList.remove('active');
         document.getElementById('formCompradorPirotecnia').reset();
-        compradorPirotecnia = null;
+        if (!keepComprador) compradorPirotecnia = null;
     }
 
     // MÁSCARA DE CPF
@@ -1277,7 +1434,21 @@
 
     // FINALIZAR VENDA
     document.getElementById('finishBtn').addEventListener('click', async () => {
-        if (!selectedPayment || cart.length === 0 || !caixaAberto) return;
+        if (!caixaAberto) {
+            console.warn('Finalizar bloqueado: caixa fechado.');
+            alert('Abra o caixa antes de finalizar a venda.');
+            return;
+        }
+        if (cart.length === 0) {
+            console.warn('Finalizar bloqueado: carrinho vazio.');
+            alert('Adicione pelo menos um produto ao carrinho.');
+            return;
+        }
+        if (!selectedPayment) {
+            console.warn('Finalizar bloqueado: forma de pagamento não selecionada.');
+            alert('Selecione a forma de pagamento (Dinheiro, PIX, Cartão).');
+            return;
+        }
 
         // Verifica se tem produtos com restrição e se já validou comprador
         if (temProdutosComRestricao() && !compradorPirotecnia) {
@@ -1294,8 +1465,21 @@
         }
     });
 
+    // Parse valor em R$: "50,50" | "50.50" | "1.234,56"
+    function parseValorRecebido(str) {
+        if (str == null || str === '') return 0;
+        let s = String(str).trim().replace(/\s/g, '');
+        if (s.includes(',')) {
+            s = s.replace(/\./g, '').replace(',', '.');
+        }
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : Math.max(0, n);
+    }
+
     // ABRIR MODAL DE PAGAMENTO EM DINHEIRO
     function abrirModalPagamentoDinheiro() {
+        valorRecebido = null;
+        troco = 0;
         const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
         document.getElementById('totalVendaModal').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
         document.getElementById('valorRecebidoInput').value = '';
@@ -1307,38 +1491,48 @@
     }
 
     // FECHAR MODAL DE PAGAMENTO
-    function fecharModalPagamento() {
+    // clearValores=false: ao confirmar pagamento, mantém valorRecebido/troco para o modal de confirmação
+    function fecharModalPagamento(clearValores) {
         document.getElementById('pagamentoDinheiroModal').classList.remove('active');
-        valorRecebido = null;
-        troco = 0;
+        if (clearValores !== false) {
+            valorRecebido = null;
+            troco = 0;
+        }
     }
 
-    // CALCULAR TROCO
-    document.getElementById('valorRecebidoInput').addEventListener('input', function(e) {
+    // CALCULAR TROCO (valor recebido aceita vírgula ou ponto como decimal)
+    function atualizarTroco() {
         const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        const recebido = parseFloat(e.target.value) || 0;
-        
-        if (recebido >= total) {
-            troco = recebido - total;
+        const input = document.getElementById('valorRecebidoInput');
+        const recebido = parseValorRecebido(input ? input.value : '');
+        if (recebido >= total && total > 0) {
+            troco = Math.round((recebido - total) * 100) / 100;
             document.getElementById('trocoValor').textContent = `R$ ${troco.toFixed(2).replace('.', ',')}`;
             document.getElementById('trocoContainer').style.display = 'block';
             document.getElementById('valorInsuficiente').style.display = 'none';
             document.getElementById('confirmarPagamentoBtn').disabled = false;
             valorRecebido = recebido;
-        } else {
-            const faltante = total - recebido;
+        } else if (recebido > 0) {
+            const faltante = Math.round((total - recebido) * 100) / 100;
             document.getElementById('valorFaltante').textContent = `R$ ${faltante.toFixed(2).replace('.', ',')}`;
             document.getElementById('trocoContainer').style.display = 'none';
             document.getElementById('valorInsuficiente').style.display = 'block';
             document.getElementById('confirmarPagamentoBtn').disabled = true;
             valorRecebido = null;
+        } else {
+            document.getElementById('trocoContainer').style.display = 'none';
+            document.getElementById('valorInsuficiente').style.display = 'none';
+            document.getElementById('confirmarPagamentoBtn').disabled = true;
+            valorRecebido = null;
         }
-    });
+    }
+    document.getElementById('valorRecebidoInput').addEventListener('input', atualizarTroco);
+    document.getElementById('valorRecebidoInput').addEventListener('blur', atualizarTroco);
 
     // CONFIRMAR PAGAMENTO EM DINHEIRO
     document.getElementById('confirmarPagamentoBtn').addEventListener('click', () => {
-        if (valorRecebido && troco >= 0) {
-            fecharModalPagamento();
+        if (valorRecebido != null && troco >= 0) {
+            fecharModalPagamento(false);  // mantém valor/troco para exibir na confirmação
             abrirModalConfirmacao();
         }
     });
@@ -1391,7 +1585,10 @@
                 itens: cart.map(item => ({
                     produto_id: item.id,
                     quantidade: item.qty,
-                    preco_unitario: item.price
+                    preco_unitario: item.price,
+                    codigo_barras_usado: item.codigo_barras_usado,
+                    codigo_alternativo_id: item.codigo_alternativo_id,
+                    multiplicador_aplicado: item.multiplicador_aplicado
                 }))
             };
 
@@ -1406,6 +1603,7 @@
                 bodyData.troco = troco;
             }
 
+            console.log('Enviando POST finalizar-venda...', { loja_id: bodyData.loja_id, itens: bodyData.itens.length, tipo_pagamento: bodyData.tipo_pagamento });
             const response = await fetch('{% url "pdv:finalizar_venda" %}', {
                 method: 'POST',
                 headers: {
@@ -1415,7 +1613,15 @@
                 body: JSON.stringify(bodyData)
             });
 
-            const data = await response.json();
+            const rawText = await response.text();
+            let data = {};
+            try {
+                data = rawText ? JSON.parse(rawText.replace(/^\uFEFF/, '')) : {};
+            } catch (e) {
+                console.error('Resposta finalizar-venda não é JSON:', rawText.slice(0, 500));
+                alert('Erro ao finalizar venda. Resposta inválida do servidor (HTTP ' + response.status + '). Verifique o console.');
+                return;
+            }
 
             if (data.sucesso) {
                 let mensagem = data.mensagem;
@@ -1430,15 +1636,17 @@
                 valorRecebido = null;
                 troco = 0;
             } else {
+                const msg = data.erro || ('Erro ao finalizar venda (HTTP ' + response.status + ')');
+                if (response.status !== 200) console.warn('finalizar-venda ' + response.status + ':', msg);
                 if (data.requer_validacao) {
                     abrirModalPirotecnia();
                 } else {
-                    alert(data.erro || 'Erro ao finalizar venda');
+                    alert(msg);
                 }
             }
         } catch (error) {
-            console.error('Erro:', error);
-            alert('Erro ao finalizar venda');
+            console.error('Erro ao finalizar venda:', error);
+            alert('Erro ao finalizar venda: ' + (error.message || 'erro desconhecido'));
         }
     }
 
@@ -1484,8 +1692,13 @@
 
             if (validacao.valido) {
                 compradorPirotecnia = formData;
-                fecharModalPirotecnia();
-                await processarVenda();
+                fecharModalPirotecnia(true);
+                if (selectedPayment === 'DINHEIRO') {
+                    abrirModalPagamentoDinheiro();
+                } else {
+                    abrirModalConfirmacao();
+                    document.getElementById('confirmarVendaBtn').focus();
+                }
             } else {
                 // Mostra erros
                 if (validacao.erros) {
@@ -1630,4 +1843,5 @@
         return cookieValue;
     }
 </script>
+<script src="{% static 'pdv/js/pdv_tablet.js' %}"></script>
 {% endblock %}

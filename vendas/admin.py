@@ -16,14 +16,24 @@ class CondicaoPagamentoAdmin(admin.ModelAdmin):
 class ItemPedidoVendaInline(admin.TabularInline):
     model = ItemPedidoVenda
     extra = 1
-    fields = ['produto', 'quantidade', 'preco_unitario', 'desconto', 'total', 'is_active']
+    fields = [
+        'produto',
+        'quantidade',
+        'preco_unitario',
+        'desconto',
+        'total',
+        'codigo_barras_usado',
+        'codigo_alternativo_usado',
+        'multiplicador_aplicado',
+        'is_active',
+    ]
     readonly_fields = ['total']
 
 
 @admin.register(PedidoVenda)
 class PedidoVendaAdmin(admin.ModelAdmin):
-    list_display = ['id', 'cliente', 'loja', 'tipo_venda', 'status', 'valor_total', 'vendedor', 'data_emissao']
-    list_filter = ['status', 'tipo_venda', 'loja', 'data_emissao']
+    list_display = ['id', 'cliente', 'loja', 'tipo_venda', 'status', 'origem', 'valor_total', 'vendedor', 'data_emissao']
+    list_filter = ['status', 'tipo_venda', 'origem', 'loja', 'data_emissao']
     search_fields = ['id', 'cliente__nome_razao_social', 'observacoes']
     readonly_fields = ['data_emissao', 'created_at', 'updated_at', 'created_by', 'updated_by']
     date_hierarchy = 'data_emissao'
@@ -32,6 +42,9 @@ class PedidoVendaAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Informações Básicas', {
             'fields': ('loja', 'cliente', 'tipo_venda', 'status', 'vendedor')
+        }),
+        ('PDV Móvel', {
+            'fields': ('origem', 'atendente_tablet'),
         }),
         ('Pagamento', {
             'fields': ('condicao_pagamento', 'valor_total')
@@ -47,7 +60,17 @@ class PedidoVendaAdmin(admin.ModelAdmin):
 
 @admin.register(ItemPedidoVenda)
 class ItemPedidoVendaAdmin(admin.ModelAdmin):
-    list_display = ['pedido', 'produto', 'quantidade', 'preco_unitario', 'desconto', 'total']
+    list_display = [
+        'pedido',
+        'produto',
+        'quantidade',
+        'multiplicador_aplicado',
+        'codigo_barras_usado',
+        'codigo_alternativo_usado',
+        'preco_unitario',
+        'desconto',
+        'total',
+    ]
     list_filter = ['pedido__status', 'pedido__loja']
     search_fields = ['pedido__id', 'produto__codigo_interno', 'produto__descricao']
     readonly_fields = ['total', 'created_at', 'updated_at', 'created_by', 'updated_by']

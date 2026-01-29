@@ -16,7 +16,16 @@ from pessoas.views import ClienteViewSet, FornecedorViewSet
 from produtos.views import CategoriaProdutoViewSet, ProdutoViewSet
 from estoque.views import LocalEstoqueViewSet, EstoqueAtualViewSet, MovimentoEstoqueViewSet
 from vendas.views import CondicaoPagamentoViewSet, PedidoVendaViewSet
-from pdv.views_api import CaixaSessaoViewSet, PagamentoViewSet, buscar_produtos_pdv, validar_comprador_pirotecnia
+from pdv.views_api import (
+    CaixaSessaoViewSet,
+    PagamentoViewSet,
+    buscar_produtos_pdv,
+    validar_comprador_pirotecnia,
+    buscar_pedido_tablet,
+    efetivar_pedido_tablet_view,
+    verificar_caixa_aberto,
+)
+from pdv_movel.api.viewsets import PedidosPDVViewSet as PDVMovelPedidosViewSet
 from crm.views import LeadViewSet, InteracaoCRMViewSet
 from eventos.views import EventoVendaViewSet
 from orcamentos.views import OrcamentoVendaViewSet, ItemOrcamentoVendaViewSet
@@ -62,7 +71,14 @@ urlpatterns = [
     path('api/v1/auth/', include('rest_framework.urls')),
     path('api/v1/pdv/produtos/', buscar_produtos_pdv, name='api-pdv-produtos'),
     path('api/v1/pdv/validar-comprador/', validar_comprador_pirotecnia, name='api-validar-comprador'),
+    path('pdv/api/buscar-pedido-tablet/', buscar_pedido_tablet),
+    path('pdv/api/efetivar-pedido-tablet/', efetivar_pedido_tablet_view),
+    path('pdv/api/verificar-caixa/', verificar_caixa_aberto),
     path('pdv/', include('pdv.urls')),
+    path(
+        'pdv-movel/api/pedidos/<int:pk>/adicionar_item/',
+        PDVMovelPedidosViewSet.as_view(actions={'post': 'adicionar_item'}),
+    ),
     path('eventos/', include('eventos.urls')),
     path('fiscal/', include('fiscal.urls')),
     path('produtos/', include('produtos.urls')),
@@ -70,6 +86,7 @@ urlpatterns = [
     path('orcamentos/', include('orcamentos.urls')),
     path('vendas/', include('vendas.urls')),
     path('financeiro/', include('financeiro.urls')),
+    path('pdv-movel/', include('pdv_movel.urls')),
 ]
 
 # Servir arquivos de mídia em desenvolvimento

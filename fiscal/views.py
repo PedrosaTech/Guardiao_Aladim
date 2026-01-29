@@ -117,11 +117,6 @@ def detalhes_nota_saida(request, nota_id):
         is_active=True
     )
     
-    # Buscar itens do pedido se houver
-    itens = []
-    if nota.pedido_venda:
-        itens = nota.pedido_venda.itens.filter(is_active=True).select_related('produto')
-    
     # Buscar configuração fiscal
     config_fiscal = None
     try:
@@ -129,16 +124,67 @@ def detalhes_nota_saida(request, nota_id):
     except:
         pass
     
-    # Calcular impostos
-    from .calculos import calcular_impostos_nota
-    regime_tributario = config_fiscal.regime_tributario if config_fiscal else None
-    impostos = calcular_impostos_nota(itens, regime_tributario)
+    # Obter impostos (usa snapshot se autorizada, senão calcula)
+    impostos = nota.get_impostos()
+    
+    # Calcular impostos por item para exibição
+    itens_com_impostos = []
+    
+    if nota.pedido_venda:
+        itens = nota.pedido_venda.itens.filter(is_active=True).select_related('produto')
+        
+        for item in itens:
+            # Se autorizada, buscar do snapshot
+            if nota.status == 'AUTORIZADA' and nota.impostos_snapshot:
+                item_snapshot = next(
+                    (s for s in nota.impostos_snapshot if s['item_id'] == item.id),
+                    None
+                )
+                if item_snapshot:
+                    impostos_item = item_snapshot['impostos']
+                    # Converter valores de volta para Decimal
+                    from decimal import Decimal
+                    impostos_item = {
+                        k: Decimal(str(v)) if isinstance(v, (int, float)) else v
+                        for k, v in impostos_item.items()
+                    }
+                else:
+                    # Fallback: calcular
+                    from fiscal.calculos import calcular_impostos_item
+                    regime = config_fiscal.regime_tributario if config_fiscal else None
+                    impostos_item = calcular_impostos_item(item, regime, config_fiscal)
+            else:
+                # Calcular em tempo real
+                from fiscal.calculos import calcular_impostos_item
+                regime = config_fiscal.regime_tributario if config_fiscal else None
+                impostos_item = calcular_impostos_item(item, regime, config_fiscal)
+            
+            # Helper para descrição
+            if hasattr(item, 'get_descricao'):
+                descricao = item.get_descricao()
+            elif item.produto:
+                descricao = item.produto.descricao
+            elif hasattr(item, 'servico') and item.servico:
+                descricao = item.servico.nome
+            else:
+                descricao = 'Item'
+            
+            itens_com_impostos.append({
+                'item': item,
+                'descricao': descricao,
+                'quantidade': item.quantidade,
+                'valor_unitario': item.preco_unitario,
+                'total': item.total,
+                'impostos': impostos_item,
+                'eh_produto': item.produto is not None,
+                'eh_servico': hasattr(item, 'servico') and item.servico is not None,
+            })
     
     context = {
         'nota': nota,
-        'itens': itens,
+        'itens': itens_com_impostos,  # ← Agora com impostos por item
         'config_fiscal': config_fiscal,
-        'impostos': impostos,
+        'impostos': impostos,  # ← Totais
     }
     
     return render(request, 'fiscal/detalhes_nota_saida.html', context)
@@ -270,8 +316,8 @@ def imprimir_nfe_pdf(request, nota_id):
     
     # Calcular impostos conforme normas SEFAZ-BA
     # IMPORTANTE: Para Simples Nacional, os impostos não são calculados separadamente
-    from .calculos import calcular_impostos_nota
-    impostos = calcular_impostos_nota(itens, regime_tributario)
+    # Usar get_impostos() que já considera snapshot se autorizada
+    impostos = nota.get_impostos()
     
     # Preparar contexto
     context = {

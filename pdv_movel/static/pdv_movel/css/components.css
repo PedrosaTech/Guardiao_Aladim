@@ -1,0 +1,108 @@
+/* Componentes reutilizáveis */
+
+.header {
+    background: var(--primary);
+    color: white;
+    padding: var(--spacing);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-left { display: flex; align-items: center; gap: var(--spacing); }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.logo { font-size: var(--font-size-xl); font-weight: bold; }
+.atendente-info { font-size: var(--font-size-base); opacity: 0.9; }
+.loja-info { font-size: var(--font-size-base); opacity: 0.9; }
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-size);
+    padding: 0 24px;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: 8px;
+    background: var(--primary);
+    color: white;
+}
+
+.btn:active { transform: scale(0.95); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+.btn-secondary { background: var(--gray-600); color: white; }
+.btn-success { background: var(--success); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+
+.btn-icon {
+    min-width: var(--touch-size);
+    min-height: var(--touch-size);
+    padding: 0;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-icon:active { background: rgba(255, 255, 255, 0.3); }
+
+.card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: var(--spacing);
+    margin-bottom: var(--spacing);
+}
+
+.card-header {
+    font-size: var(--font-size-lg);
+    font-weight: bold;
+    margin-bottom: var(--spacing);
+    padding-bottom: var(--spacing);
+    border-bottom: 2px solid var(--gray-200);
+}
+
+.input {
+    width: 100%;
+    min-height: var(--touch-size);
+    padding: 0 var(--spacing);
+    font-size: var(--font-size-lg);
+    border: 2px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.input-search {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%236c757d' d='M12.9 14.32a8 8 0 1 1 1.41-1.41l5.35 5.33-1.42 1.42-5.33-5.34zM8 14A6 6 0 1 0 8 2a6 6 0 0 0 0 12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 16px center;
+    padding-left: 50px;
+}
+
+.main-content {
+    flex: 1;
+    padding: var(--spacing);
+    overflow-y: auto;
+}

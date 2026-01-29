@@ -1,12 +1,18 @@
 """
 Views do app produtos.
 """
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
+from django.views.decorators.http import require_http_methods
 from rest_framework import viewsets
-from .models import CategoriaProduto, Produto
+
+from pessoas.models import Fornecedor
+
+from .forms import CodigoBarrasAlternativoForm, ProdutoForm
+from .models import CategoriaProduto, CodigoBarrasAlternativo, Produto
 from .serializers import CategoriaProdutoSerializer, ProdutoSerializer
 
 
@@ -50,11 +56,19 @@ def lista_produtos(request):
     elif restricao_exercito == 'nao':
         produtos = produtos.filter(possui_restricao_exercito=False)
     if search:
+        # Inclui códigos alternativos na busca da listagem
+        ids_alt = CodigoBarrasAlternativo.objects.filter(
+            codigo_barras__icontains=search,
+            produto__in=produtos,
+            produto__is_active=True,
+            is_active=True,
+        ).values_list('produto_id', flat=True)
         produtos = produtos.filter(
-            Q(codigo_interno__icontains=search) |
-            Q(codigo_barras__icontains=search) |
-            Q(descricao__icontains=search) |
-            Q(ncm__icontains=search)
+            Q(codigo_interno__icontains=search)
+            | Q(codigo_barras__icontains=search)
+            | Q(descricao__icontains=search)
+            | Q(ncm__icontains=search)
+            | Q(id__in=ids_alt)
         )
     
     # Ordenação
@@ -103,7 +117,7 @@ def detalhes_produto(request, produto_id):
     estoques = EstoqueAtual.objects.filter(
         produto=produto,
         is_active=True
-    ).select_related('local_estoque')
+    ).select_related('local_estoque', 'local_estoque__loja')
     
     context = {
         'produto': produto,
@@ -187,3 +201,183 @@ def criar_produto(request):
     }
     
     return render(request, 'produtos/criar_produto.html', context)
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def produto_editar(request, produto_id):
+    """Edição de produto."""
+    produto = get_object_or_404(
+        Produto.objects.select_related('empresa', 'loja', 'categoria'),
+        pk=produto_id,
+        is_active=True,
+    )
+    if request.method == 'POST':
+        form = ProdutoForm(request.POST, instance=produto)
+        if form.is_valid():
+            p = form.save(commit=False)
+            p.updated_by = request.user
+            p.save()
+            messages.success(request, f'Produto "{p.descricao}" atualizado com sucesso.')
+            return redirect('produtos:detalhes_produto', produto_id=p.id)
+    else:
+        form = ProdutoForm(instance=produto)
+    return render(request, 'produtos/produto_editar.html', {'form': form, 'produto': produto})
+
+
+@login_required
+@require_http_methods(['GET'])
+def produto_codigos_alternativos(request, produto_id):
+    """Página de códigos alternativos do produto."""
+    produto = get_object_or_404(
+        Produto.objects.select_related('empresa', 'categoria'),
+        pk=produto_id,
+        is_active=True,
+    )
+    codigos = produto.codigos_alternativos.filter(is_active=True).select_related('fornecedor').order_by('codigo_barras')
+    fornecedores = Fornecedor.objects.filter(
+        empresa=produto.empresa, is_active=True
+    ).order_by('razao_social')
+    form_add = CodigoBarrasAlternativoForm(empresa=produto.empresa)
+    return render(request, 'produtos/produto_codigos_alternativos.html', {
+        'produto': produto,
+        'codigos': codigos,
+        'fornecedores': fornecedores,
+        'form_add': form_add,
+    })
+
+
+@login_required
+@require_http_methods(['POST'])
+def codigo_alternativo_criar(request, produto_id):
+    """Criar código alternativo via AJAX. Sempre retorna JSON."""
+    produto = get_object_or_404(Produto, pk=produto_id, is_active=True)
+    fornecedor_id = request.POST.get('fornecedor_id')
+    fornecedor = None
+    if fornecedor_id:
+        try:
+            fornecedor = Fornecedor.objects.get(
+                pk=int(fornecedor_id),
+                empresa=produto.empresa,
+                is_active=True,
+            )
+        except (Fornecedor.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'message': 'Fornecedor inválido ou não pertence a esta empresa.',
+            }, status=400)
+    form = CodigoBarrasAlternativoForm(request.POST, empresa=produto.empresa)
+    form.instance.produto = produto
+    if form.is_valid():
+        try:
+            codigo = form.save(commit=False)
+            codigo.fornecedor = fornecedor
+            codigo.created_by = request.user
+            codigo.full_clean()
+            codigo.save()
+            return JsonResponse({
+                'success': True,
+                'message': 'Código alternativo adicionado com sucesso!',
+                'codigo': {
+                    'id': codigo.id,
+                    'codigo_barras': codigo.codigo_barras,
+                    'descricao': codigo.descricao or '',
+                    'multiplicador': f'{codigo.multiplicador:.3f}',
+                    'fornecedor_id': codigo.fornecedor_id,
+                    'fornecedor_nome': codigo.fornecedor.razao_social if codigo.fornecedor else None,
+                },
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Erro ao salvar: {str(e)}'}, status=400)
+    errors = []
+    for _f, errs in form.errors.items():
+        for e in errs:
+            errors.append(str(e))
+    return JsonResponse({'success': False, 'message': ' | '.join(errors)}, status=400)
+
+
+@login_required
+@require_http_methods(['POST'])
+def codigo_alternativo_editar(request, codigo_id):
+    """Editar código alternativo via AJAX. Sempre retorna JSON."""
+    codigo = get_object_or_404(CodigoBarrasAlternativo, pk=codigo_id, is_active=True)
+    fornecedor_id = request.POST.get('fornecedor_id')
+    fornecedor = None
+    if fornecedor_id:
+        try:
+            fornecedor = Fornecedor.objects.get(
+                pk=int(fornecedor_id),
+                empresa=codigo.produto.empresa,
+                is_active=True,
+            )
+        except (Fornecedor.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({
+                'success': False,
+                'message': 'Fornecedor inválido ou não pertence a esta empresa.',
+            }, status=400)
+    form = CodigoBarrasAlternativoForm(
+        request.POST, instance=codigo, empresa=codigo.produto.empresa
+    )
+    if form.is_valid():
+        try:
+            c = form.save(commit=False)
+            c.fornecedor = fornecedor
+            c.updated_by = request.user
+            c.full_clean()
+            c.save()
+            return JsonResponse({
+                'success': True,
+                'message': 'Código alternativo atualizado com sucesso!',
+                'codigo': {
+                    'id': c.id,
+                    'codigo_barras': c.codigo_barras,
+                    'descricao': c.descricao or '',
+                    'multiplicador': f'{c.multiplicador:.3f}',
+                    'fornecedor_id': c.fornecedor_id,
+                    'fornecedor_nome': c.fornecedor.razao_social if c.fornecedor else None,
+                },
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Erro ao salvar: {str(e)}'}, status=400)
+    errors = []
+    for _f, errs in form.errors.items():
+        for e in errs:
+            errors.append(str(e))
+    return JsonResponse({'success': False, 'message': ' | '.join(errors)}, status=400)
+
+
+@login_required
+@require_http_methods(['POST'])
+def codigo_alternativo_inativar(request, codigo_id):
+    """Inativar código alternativo via AJAX. Sempre retorna JSON."""
+    codigo = get_object_or_404(CodigoBarrasAlternativo, pk=codigo_id, is_active=True)
+    codigo.is_active = False
+    codigo.updated_by = request.user
+    codigo.save()
+    return JsonResponse({
+        'success': True,
+        'message': 'Código alternativo removido com sucesso.',
+    })
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def produto_inativar(request, produto_id):
+    """Confirmação e inativação de produto (soft delete)."""
+    produto = get_object_or_404(
+        Produto.objects.select_related('empresa', 'categoria'),
+        pk=produto_id,
+        is_active=True,
+    )
+    if request.method == 'POST':
+        produto.is_active = False
+        produto.updated_by = request.user
+        produto.save()
+        produto.codigos_alternativos.filter(is_active=True).update(is_active=False)
+        messages.success(request, f'Produto "{produto.descricao}" foi inativado.')
+        return redirect('produtos:lista_produtos')
+    codigos_ativos = produto.codigos_alternativos.filter(is_active=True)
+    return render(request, 'produtos/produto_inativar_confirm.html', {
+        'produto': produto,
+        'codigos_ativos': codigos_ativos,
+    })

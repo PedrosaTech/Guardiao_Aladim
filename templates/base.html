@@ -147,9 +147,13 @@
             
             <div class="menu-section">
                 <div class="menu-section-title">Vendas</div>
-                <a href="{% url 'pdv:pdv' %}" class="menu-item {% if 'pdv' in request.path %}active{% endif %}">
+                <a href="{% url 'pdv:pdv' %}" class="menu-item {% if 'pdv' in request.path and 'pdv-movel' not in request.path %}active{% endif %}">
                     <span class="menu-item-icon">🛒</span>
                     PDV - Balcão
+                </a>
+                <a href="{% url 'vendas:lista_pedidos' %}" class="menu-item {% if 'vendas' in request.path and 'pedidos' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">📝</span>
+                    Pedidos
                 </a>
                 <a href="{% url 'orcamentos:orcamento_rapido' %}" class="menu-item {% if 'rapido' in request.path %}active{% endif %}">
                     <i class="fas fa-bolt"></i> Orçamento Rápido
@@ -161,6 +165,10 @@
                 <a href="{% url 'eventos:lista_eventos' %}" class="menu-item {% if 'eventos' in request.path %}active{% endif %}">
                     <span class="menu-item-icon">🎆</span>
                     Eventos
+                </a>
+                <a href="{% url 'vendas:relatorio_vendas_consolidado' %}" class="menu-item {% if 'vendas' in request.path and 'relatorios/vendas' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">📈</span>
+                    Relatório de Vendas
                 </a>
             </div>
             

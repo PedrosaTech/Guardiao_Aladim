@@ -108,7 +108,7 @@
                 <select name="loja" required>
                     <option value="">Selecione...</option>
                     {% for loja in lojas %}
-                    <option value="{{ loja.id }}" {% if form_data.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.nome_fantasia }}</option>
+                    <option value="{{ loja.id }}" {% if form_data.loja == loja.id|stringformat:"s" %}selected{% endif %}>{{ loja.empresa.nome_fantasia }} - {{ loja.nome }}</option>
                     {% endfor %}
                 </select>
             </div>

@@ -7,8 +7,8 @@ from .models import ConfiguracaoFiscalLoja, NotaFiscalSaida, NotaFiscalEntrada
 
 @admin.register(ConfiguracaoFiscalLoja)
 class ConfiguracaoFiscalLojaAdmin(admin.ModelAdmin):
-    list_display = ['loja', 'cnpj', 'inscricao_estadual', 'regime_tributario', 'ambiente', 'is_active']
-    list_filter = ['ambiente', 'is_active']
+    list_display = ['loja', 'cnpj', 'inscricao_estadual', 'regime_tributario', 'usar_reforma_2026', 'ambiente', 'is_active']
+    list_filter = ['ambiente', 'usar_reforma_2026', 'is_active']
     search_fields = ['loja__nome', 'cnpj', 'inscricao_estadual']
     readonly_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
     
@@ -24,6 +24,10 @@ class ConfiguracaoFiscalLojaAdmin(admin.ModelAdmin):
         }),
         ('Configurações de Emissão', {
             'fields': ('ambiente', 'serie_nfe', 'serie_nfce', 'proximo_numero_nfe', 'proximo_numero_nfce')
+        }),
+        ('Reforma Tributária 2026', {
+            'fields': ('usar_reforma_2026', 'aliquota_ibs_padrao_2026', 'aliquota_cbs_padrao_2026'),
+            'description': '⚠️ Ative apenas quando estiver pronto para usar CBS/IBS. Sistema funciona normalmente com reforma desligada.'
         }),
         ('Controle', {
             'fields': ('is_active', 'created_at', 'updated_at', 'created_by', 'updated_by')

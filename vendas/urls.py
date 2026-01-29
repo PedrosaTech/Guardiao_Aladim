@@ -25,6 +25,9 @@ urlpatterns = [
     # APIs
     path('api/buscar-produtos/', views.buscar_produtos_rapido, name='buscar_produtos_rapido'),
     path('api/buscar-clientes/', views.buscar_clientes_rapido, name='buscar_clientes_rapido'),
+
+    # Relatórios
+    path('relatorios/vendas/', views.relatorio_vendas_consolidado, name='relatorio_vendas_consolidado'),
 ]
 
 

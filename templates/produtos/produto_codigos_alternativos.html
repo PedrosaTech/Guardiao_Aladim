@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Códigos alternativos – {{ produto.descricao|truncatewords:6 }} - Guardião Aladin{% endblock %}
+{% block page_title %}Códigos alternativos{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<link rel="stylesheet" href="{% static 'produtos/css/produtos.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'produtos:lista_produtos' %}">Produtos</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'produtos:detalhes_produto' produto.id %}">{{ produto.codigo_interno|default:produto.id }}</a></li>
+            <li class="breadcrumb-item active">Códigos alternativos</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="produto-info">
+            <h4 class="mb-1">{{ produto.codigo_interno|default:produto.id }} – {{ produto.descricao }}</h4>
+            <span class="badge bg-primary">{{ codigos|length }}</span> código(s) alternativo(s)
+        </div>
+        <a href="{% url 'produtos:produto_editar' produto.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> Voltar ao editar
+        </a>
+    </div>
+
+    <div id="messages-container"></div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header"><strong>Adicionar código</strong></div>
+                <div class="card-body">
+                    <form id="form-adicionar" method="post">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            {{ form_add.codigo_barras.label_tag }}
+                            {{ form_add.codigo_barras }}
+                            {{ form_add.codigo_barras.errors }}
+                        </div>
+                        <div class="mb-2">
+                            {{ form_add.descricao.label_tag }}
+                            {{ form_add.descricao }}
+                            <small class="text-muted d-block">Ex: Caixa com 12 pacotes</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fornecedor (opcional)</label>
+                            <input type="hidden" id="add-fornecedor-id" name="fornecedor_id" value="">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="abrirModalFornecedor('add')">
+                                    <i class="bi bi-building"></i> Selecionar Fornecedor
+                                </button>
+                            </div>
+                            <div id="add-fornecedor-display" class="mt-2" style="display: none;">
+                                <div class="alert alert-info alert-dismissible fade show mb-0 py-2" role="alert">
+                                    <strong><i class="bi bi-building"></i> Fornecedor:</strong>
+                                    <span id="add-fornecedor-nome"></span>
+                                    <button type="button" class="btn-close btn-close-sm" onclick="limparFornecedor('add'); return false;"></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            {{ form_add.multiplicador.label_tag }}
+                            {{ form_add.multiplicador }}
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-circle"></i> Adicionar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header"><strong>Códigos cadastrados</strong></div>
+                <div class="card-body">
+                    <div id="lista-codigos">
+                        {% if codigos %}
+                            {% for c in codigos %}
+                            <div class="codigo-card mb-3 p-3 border rounded" data-codigo-id="{{ c.id }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Código de barras</small>
+                                        <div class="codigo-barras">{{ c.codigo_barras }}</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Descrição</small>
+                                        <div>{{ c.descricao|default:"—" }}</div>
+                                        {% if c.fornecedor %}
+                                        <div class="mt-1">
+                                            <span class="badge bg-secondary"><i class="bi bi-building"></i> {{ c.fornecedor.razao_social }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Multiplicador</small>
+                                        <div>
+                                            <span class="badge {% if c.multiplicador|floatformat:3 == '1.000' %}bg-secondary{% else %}bg-info{% endif %} badge-multiplicador">
+                                                {{ c.multiplicador }}x
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1"
+                                                onclick="editarCodigo({{ c.id }}, '{{ c.codigo_barras|escapejs }}', '{{ c.descricao|default:''|escapejs }}', '{{ c.multiplicador }}', {{ c.fornecedor_id|default:'null' }}, '{{ c.fornecedor.razao_social|default:''|escapejs }}')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="confirmarRemover({{ c.id }})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state py-5 text-center text-muted">
+                                <div class="empty-state-icon mb-2" style="font-size: 3rem;">📦</div>
+                                <h5>Nenhum código alternativo cadastrado</h5>
+                                <p>Adicione códigos alternativos usando o formulário ao lado.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar código alternativo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-codigo-id">
+                <div class="mb-2">
+                    <label class="form-label">Código de barras</label>
+                    <input type="text" id="edit-codigo-barras" class="form-control" maxlength="14">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descrição</label>
+                    <input type="text" id="edit-descricao" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Fornecedor (opcional)</label>
+                    <input type="hidden" id="edit-fornecedor-id" value="">
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="abrirModalFornecedor('edit')">
+                            <i class="bi bi-building"></i> Selecionar Fornecedor
+                        </button>
+                    </div>
+                    <div id="edit-fornecedor-display" class="mt-2" style="display: none;">
+                        <div class="alert alert-info alert-dismissible fade show mb-0 py-2" role="alert">
+                            <strong><i class="bi bi-building"></i> Fornecedor:</strong>
+                            <span id="edit-fornecedor-nome"></span>
+                            <button type="button" class="btn-close btn-close-sm" onclick="limparFornecedor('edit'); return false;"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Multiplicador</label>
+                    <input type="text" id="edit-multiplicador" class="form-control" value="1.000">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEdicao()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalFornecedor" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-building"></i> Selecionar Fornecedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if fornecedores %}
+                <div class="mb-3">
+                    <input type="search" class="form-control" id="busca-fornecedor" placeholder="Buscar por nome ou CNPJ...">
+                </div>
+                <div class="list-group" id="lista-fornecedores">
+                    {% for forn in fornecedores %}
+                    <button type="button" class="list-group-item list-group-item-action fornecedor-item" data-fornecedor-id="{{ forn.id }}" data-fornecedor-nome="{{ forn.razao_social|escapejs }}" data-fornecedor-cnpj="{{ forn.cnpj|default:''|escapejs }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ forn.razao_social }}</strong>
+                                {% if forn.cnpj %}
+                                <br><small class="text-muted">CNPJ: {{ forn.cnpj }}</small>
+                                {% endif %}
+                            </div>
+                            <i class="bi bi-check-circle text-primary" style="font-size: 1.25rem;"></i>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size: 4rem;"></i>
+                    <h5 class="mt-3">Nenhum fornecedor cadastrado</h5>
+                    <p>Cadastre fornecedores para associá-los aos códigos alternativos.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const PRODUTO_ID = {{ produto.id }};
+    const CSRF_TOKEN = "{{ csrf_token }}";
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'produtos/js/codigos_alternativos.js' %}"></script>
+{% endblock %}

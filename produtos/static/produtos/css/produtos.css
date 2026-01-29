@@ -1,0 +1,66 @@
+/**
+ * Estilos para páginas de produtos (códigos alternativos, etc.)
+ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.codigo-card {
+    animation: slideIn 0.3s ease;
+}
+
+.codigo-barras {
+    font-family: 'Courier New', Consolas, monospace;
+    letter-spacing: 2px;
+    font-weight: 600;
+}
+
+.badge-multiplicador {
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+.codigo-card:hover {
+    transform: translateY(-2px);
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.2em;
+}
+
+@media (max-width: 768px) {
+    .codigo-card .row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .codigo-card .col-md-2.text-end {
+        text-align: left !important;
+    }
+}
+
+@media print {
+    .btn, .breadcrumb, .btn-toolbar {
+        display: none !important;
+    }
+}

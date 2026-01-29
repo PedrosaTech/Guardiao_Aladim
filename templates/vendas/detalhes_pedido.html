@@ -106,6 +106,13 @@
     .btn-success:hover {
         background: #229954;
     }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2980b9;
+    }
     .btn-danger {
         background: #e74c3c;
         color: white;
@@ -208,7 +215,7 @@
                 </div>
                 <div class="info-item">
                     <span class="info-label">Loja</span>
-                    <span class="info-value">{{ pedido.loja.nome_fantasia }}</span>
+                    <span class="info-value">{{ pedido.loja.empresa.nome_fantasia }} - {{ pedido.loja.nome }}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Condição de Pagamento</span>
@@ -331,6 +338,17 @@
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Deseja realmente cancelar este pedido?')">❌ Cancelar</button>
                     </form>
+                {% endif %}
+                
+                {% if pedido.status == 'FATURADO' %}
+                    {% if nota_fiscal %}
+                    <a href="{% url 'fiscal:detalhes_nota_saida' nota_fiscal.id %}" class="btn btn-primary">📄 Ver Nota Fiscal {{ nota_fiscal.numero }}/{{ nota_fiscal.serie }}</a>
+                    <a href="{% url 'fiscal:lista_notas_saida' %}" class="btn btn-secondary">📋 Lista de Notas Fiscais</a>
+                    {% else %}
+                    <div style="padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; color: #856404;">
+                        ⚠️ Nota fiscal não encontrada. O pedido foi faturado, mas a nota fiscal pode não ter sido criada automaticamente.
+                    </div>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>

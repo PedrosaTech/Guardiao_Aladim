@@ -1,0 +1,25 @@
+{
+  "name": "Guardião Aladin - PDV Móvel",
+  "short_name": "PDV Móvel",
+  "description": "Sistema de ponto de venda móvel para atendentes",
+  "start_url": "/pdv-movel/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2980b9",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/pdv_movel/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/pdv_movel/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"]
+}

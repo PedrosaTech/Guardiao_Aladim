@@ -205,6 +205,51 @@ class Produto(BaseModel):
         help_text='Conforme NF do fornecedor'
     )
     
+    # ═══════════════════════════════════════════════════════════
+    # REFORMA TRIBUTÁRIA 2026
+    # Campos adicionados sem afetar funcionamento atual
+    # ═══════════════════════════════════════════════════════════
+    
+    cclass_trib = models.CharField(
+        'Classificação Tributária',
+        max_length=10,
+        blank=True,
+        null=True,
+        help_text='Código de Classificação Tributária (cClassTrib) conforme Reforma 2026'
+    )
+    
+    cst_ibs = models.CharField(
+        'CST-IBS',
+        max_length=3,
+        blank=True,
+        null=True,
+        help_text='Código de Situação Tributária do IBS (Imposto sobre Bens e Serviços)'
+    )
+    
+    cst_cbs = models.CharField(
+        'CST-CBS',
+        max_length=3,
+        blank=True,
+        null=True,
+        help_text='Código de Situação Tributária da CBS (Contribuição sobre Bens e Serviços)'
+    )
+    
+    aliquota_ibs = models.DecimalField(
+        'Alíquota IBS (%)',
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.10'),
+        help_text='Alíquota do IBS - Padrão 2026: 0,10% (fase de testes)'
+    )
+    
+    aliquota_cbs = models.DecimalField(
+        'Alíquota CBS (%)',
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.90'),
+        help_text='Alíquota da CBS - Padrão 2026: 0,90% (fase de testes)'
+    )
+    
     # Comercial
     preco_venda_sugerido = models.DecimalField(
         'Preço de Venda Sugerido',
@@ -263,7 +308,131 @@ class Produto(BaseModel):
             self.codigo_interno = f"PROD-{proximo_numero:04d}"
         
         super().save(*args, **kwargs)
+
+    def get_todos_codigos(self):
+        """
+        Retorna lista com código principal + todos alternativos ativos.
+
+        Returns:
+            list: Lista de strings com códigos de barras
+        """
+        codigos = [self.codigo_barras] if self.codigo_barras else []
+        codigos.extend(
+            self.codigos_alternativos.filter(is_active=True)
+            .values_list('codigo_barras', flat=True)
+        )
+        return list(codigos)
     
     def __str__(self):
         return f"{self.codigo_interno} - {self.descricao}"
+
+
+class CodigoBarrasAlternativo(BaseModel):
+    """
+    Códigos de barras alternativos vinculados a um produto principal.
+    Permite mapeamento "de/para" para produtos com múltiplos EANs.
+
+    Exemplos: embalagem diferente (unidade vs caixa), código promocional,
+    código de fornecedor, migração de códigos antigos.
+    """
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.CASCADE,
+        related_name='codigos_alternativos',
+        verbose_name='Produto Principal',
+        help_text='Produto ao qual este código alternativo está vinculado',
+    )
+    codigo_barras = models.CharField(
+        'Código de Barras Alternativo',
+        max_length=50,
+        db_index=True,
+        help_text='EAN/GTIN alternativo mapeado para o produto principal',
+    )
+    descricao = models.CharField(
+        'Descrição/Motivo',
+        max_length=100,
+        blank=True,
+        help_text='Ex: Embalagem promocional, Código fornecedor X, Caixa 12 un, etc.',
+    )
+    multiplicador = models.DecimalField(
+        'Multiplicador',
+        max_digits=10,
+        decimal_places=3,
+        default=Decimal('1.000'),
+        validators=[MinValueValidator(Decimal('0.001'))],
+        help_text='Ex: Caixa com 12 unidades = 12.000',
+    )
+    fornecedor = models.ForeignKey(
+        'pessoas.Fornecedor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='codigos_alternativos',
+        verbose_name='Fornecedor',
+        help_text='Opcional. Fornecedor deste código alternativo.',
+    )
+
+    class Meta:
+        verbose_name = 'Código de Barras Alternativo'
+        verbose_name_plural = 'Códigos de Barras Alternativos'
+        unique_together = [['produto', 'codigo_barras']]
+        ordering = ['produto', 'codigo_barras']
+        indexes = [
+            models.Index(fields=['codigo_barras']),
+            models.Index(fields=['produto', 'is_active']),
+        ]
+
+    def __str__(self):
+        parts = [f"{self.codigo_barras} → {self.produto.codigo_interno}"]
+        if self.descricao:
+            parts.append(f"({self.descricao})")
+        if self.fornecedor:
+            parts.append(f"[Forn: {self.fornecedor.razao_social}]")
+        if self.multiplicador != 1:
+            parts.append(f"[{self.multiplicador}x]")
+        return " ".join(parts)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if not self.codigo_barras:
+            return
+
+        self.codigo_barras = self.codigo_barras.strip()
+
+        if not self.codigo_barras.isdigit():
+            raise ValidationError({
+                'codigo_barras': 'Código de barras deve conter apenas números.'
+            })
+        if len(self.codigo_barras) not in [8, 12, 13, 14]:
+            raise ValidationError({
+                'codigo_barras': 'Código de barras deve ter 8, 12, 13 ou 14 dígitos (EAN/GTIN/UPC).'
+            })
+
+        codigo_principal = (self.produto.codigo_barras or '').strip()
+        if codigo_principal and self.codigo_barras == codigo_principal:
+            raise ValidationError({
+                'codigo_barras': 'Código alternativo não pode ser igual ao código principal do produto.'
+            })
+
+        conflito = Produto.objects.filter(
+            empresa=self.produto.empresa,
+            codigo_barras=self.codigo_barras,
+            is_active=True,
+        ).exclude(pk=self.produto_id).exists()
+        if conflito:
+            raise ValidationError({
+                'codigo_barras': 'Este código já é o código principal de outro produto.'
+            })
+
+        conflito_alt = CodigoBarrasAlternativo.objects.filter(
+            codigo_barras=self.codigo_barras,
+            produto__empresa=self.produto.empresa,
+            is_active=True,
+        ).exclude(pk=self.pk).exists()
+        if conflito_alt:
+            raise ValidationError({
+                'codigo_barras': 'Este código já está vinculado a outro produto.'
+            })
 

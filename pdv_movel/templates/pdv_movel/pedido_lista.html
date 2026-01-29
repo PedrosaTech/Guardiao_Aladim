@@ -1,0 +1,142 @@
+{% extends "pdv_movel/base.html" %}
+{% load static %}
+
+{% block title %}Meus Pedidos - PDV Móvel{% endblock %}
+
+{% block content %}
+<div class="filtros-container">
+    <button type="button" class="btn btn-secondary active" id="btn-todos" onclick="filtrarPedidos('todos')">Todos</button>
+    <button type="button" class="btn btn-secondary" id="btn-aguardando" onclick="filtrarPedidos('aguardando')">Aguardando <span id="badge-aguardando" class="badge">0</span></button>
+    <button type="button" class="btn btn-secondary" id="btn-finalizados" onclick="filtrarPedidos('finalizados')">Finalizados</button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-item">
+        <div class="stat-label">Total Pedidos</div>
+        <div class="stat-value" id="stat-total">0</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-label">Finalizados</div>
+        <div class="stat-value" id="stat-finalizados">0</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-label">Valor Total</div>
+        <div class="stat-value" id="stat-valor">R$ 0,00</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-label">Ticket Médio</div>
+        <div class="stat-value" id="stat-ticket">R$ 0,00</div>
+    </div>
+</div>
+
+<div id="pedidos-container" class="pedidos-grid" style="display: none;"></div>
+<div id="empty-state" class="empty-state">
+    <div class="empty-state-icon">📋</div>
+    <div class="empty-state-text">Nenhum pedido encontrado</div>
+</div>
+
+<div class="floating-actions">
+    <button type="button" class="btn btn-primary" onclick="novoPedido()">➕ Novo Pedido</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var filtroAtual = 'todos';
+    var pedidos = [];
+
+    function getStatusClass(s) {
+        var m = { 'AGUARDANDO_PAGAMENTO': 'status-aguardando', 'FATURADO': 'status-faturado', 'CANCELADO': 'status-cancelado', 'ABANDONADO': 'status-abandonado' };
+        return m[s] || '';
+    }
+    function getStatusLabel(s) {
+        var m = { 'AGUARDANDO_PAGAMENTO': '⏳ Aguardando', 'FATURADO': '✓ Finalizado', 'CANCELADO': '✕ Cancelado', 'ABANDONADO': 'Abandonado', 'ORCAMENTO': '📋 Orçamento' };
+        return m[s] || s;
+    }
+
+    function renderizarPedidos() {
+        var container = document.getElementById('pedidos-container');
+        var empty = document.getElementById('empty-state');
+        if (!container || !empty) return;
+        if (pedidos.length === 0) {
+            container.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
+        container.style.display = 'grid';
+        empty.style.display = 'none';
+        var html = '';
+        for (var i = 0; i < pedidos.length; i++) {
+            var p = pedidos[i];
+            var num = '#' + String(p.id).padStart(4, '0');
+            var nItens = (p.itens && p.itens.length) || 0;
+            var lbl = nItens === 1 ? 'item' : 'itens';
+            var tempo = p.tempo_criacao || '';
+            var cliente = (p.cliente_nome ? ' • ' + p.cliente_nome : '');
+            var valor = typeof formatMoney === 'function' ? formatMoney(p.valor_total) : p.valor_total;
+            var cls = getStatusClass(p.status);
+            var statusLbl = getStatusLabel(p.status);
+            html += '<div class="pedido-card" data-pedido-id="' + p.id + '">' +
+                '<div class="pedido-header">' +
+                '<span class="pedido-numero">' + num + '</span>' +
+                '<span class="pedido-status ' + cls + '">' + statusLbl + '</span>' +
+                '</div>' +
+                '<div class="pedido-info">' + nItens + ' ' + lbl + ' • ' + tempo + cliente + '</div>' +
+                '<div class="pedido-valor">' + valor + '</div>' +
+                '</div>';
+        }
+        container.innerHTML = html;
+        container.querySelectorAll('.pedido-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+                var id = parseInt(card.getAttribute('data-pedido-id'), 10);
+                if (!isNaN(id)) verDetalhes(id);
+            });
+        });
+    }
+
+    function verDetalhes(id) {
+        if (typeof showToast === 'function') showToast('Detalhes em desenvolvimento', 'info');
+    }
+
+    function filtrarPedidos(filtro) {
+        filtroAtual = filtro;
+        document.querySelectorAll('.filtros-container .btn').forEach(function(b) { b.classList.remove('active'); });
+        var btn = document.getElementById('btn-' + filtro);
+        if (btn) btn.classList.add('active');
+        carregarPedidos();
+    }
+
+    function carregarPedidos() {
+        showLoading('Carregando pedidos...');
+        var params = { hoje: 'true' };
+        if (filtroAtual !== 'todos') params.status = filtroAtual === 'aguardando' ? 'AGUARDANDO_PAGAMENTO' : 'FATURADO';
+        api.listarPedidos(params).then(function(res) {
+            pedidos = res.results || [];
+            renderizarPedidos();
+        }).catch(function(err) {
+            if (typeof showToast === 'function') showToast('Erro ao carregar pedidos: ' + (err && err.message ? err.message : 'Erro'), 'error');
+        }).finally(function() { hideLoading(); });
+    }
+
+    function carregarEstatisticas() {
+        api.obterEstatisticas().then(function(s) {
+            var el = document.getElementById('stat-total'); if (el) el.textContent = s.total_pedidos ?? 0;
+            el = document.getElementById('stat-finalizados'); if (el) el.textContent = s.finalizados ?? 0;
+            el = document.getElementById('stat-valor'); if (el) el.textContent = typeof formatMoney === 'function' ? formatMoney(s.valor_total) : s.valor_total;
+            el = document.getElementById('stat-ticket'); if (el) el.textContent = typeof formatMoney === 'function' ? formatMoney(s.ticket_medio) : s.ticket_medio;
+            el = document.getElementById('badge-aguardando'); if (el) el.textContent = s.aguardando_pagamento ?? 0;
+        }).catch(function() {});
+    }
+
+    function novoPedido() {
+        window.location.href = '{% url "pdv_movel:pedido_novo" %}';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        carregarEstatisticas();
+        carregarPedidos();
+    });
+})();
+</script>
+{% endblock %}

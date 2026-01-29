@@ -309,38 +309,51 @@ def criar_orcamento(request):
 def buscar_produtos_rapido(request):
     """
     API para busca de produtos no orçamento rápido.
-    Similar ao PDV, retorna JSON com produtos ativos.
+    Suporta código de barras principal/alternativo.
     """
     termo = request.GET.get('q', '').strip()
-    
+
     if not termo:
         return JsonResponse({'produtos': []})
-    
-    from produtos.models import Produto
-    from django.db.models import Q
-    
-    # Busca por código de barras, código interno ou descrição
-    produtos = Produto.objects.filter(
-        is_active=True
-    ).filter(
-        Q(codigo_barras=termo) |
-        Q(codigo_interno=termo) |
-        Q(descricao__icontains=termo)
-    )[:10]
-    
+
+    from core.models import Empresa
+    from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
+
+    empresa = Empresa.objects.filter(is_active=True).first()
+
+    if termo.isdigit() and len(termo) >= 8:
+        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=empresa)
+        if produto:
+            return JsonResponse({
+                'produtos': [{
+                    'id': produto.id,
+                    'codigo_interno': produto.codigo_interno,
+                    'codigo_barras': termo,
+                    'descricao': produto.descricao,
+                    'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                    'unidade_comercial': produto.unidade_comercial,
+                    'classe_risco': produto.classe_risco,
+                    'subclasse_risco': produto.subclasse_risco or '',
+                    'multiplicador': float(mult),
+                    'info_codigo': codigo_alt.descricao if codigo_alt else None,
+                }]
+            })
+
+    produtos = buscar_produtos_por_termo(termo, empresa=empresa, limit=10)
     resultados = []
-    for produto in produtos:
+    for p in produtos:
         resultados.append({
-            'id': produto.id,
-            'codigo_interno': produto.codigo_interno,
-            'codigo_barras': produto.codigo_barras or '',
-            'descricao': produto.descricao,
-            'preco_venda_sugerido': str(produto.preco_venda_sugerido),
-            'unidade_comercial': produto.unidade_comercial,
-            'classe_risco': produto.classe_risco,
-            'subclasse_risco': produto.subclasse_risco or '',
+            'id': p.id,
+            'codigo_interno': p.codigo_interno,
+            'codigo_barras': p.codigo_barras or '',
+            'descricao': p.descricao,
+            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'unidade_comercial': p.unidade_comercial,
+            'classe_risco': p.classe_risco,
+            'subclasse_risco': p.subclasse_risco or '',
+            'multiplicador': 1.0,
+            'info_codigo': None,
         })
-    
     return JsonResponse({'produtos': resultados})
 
 

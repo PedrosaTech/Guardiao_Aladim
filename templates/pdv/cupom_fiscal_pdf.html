@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cupom Fiscal - Pedido #{{ pedido.id }}</title>
+    <style>
+        @page {
+            /* Formato tipo "bobina" (80mm). */
+            size: 80mm 297mm;
+            margin: 6mm;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 11px;
+            color: #000;
+            line-height: 1.25;
+        }
+        .center { text-align: center; }
+        .muted { color: #666; }
+        .hr { border-top: 1px dashed #000; margin: 8px 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        th, td { padding: 4px 0; vertical-align: top; }
+        th { text-align: left; border-bottom: 1px solid #000; padding-bottom: 6px; }
+        td.num, th.num { text-align: right; }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .total {
+            font-weight: 800;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="center">
+        <div style="font-weight: 800; font-size: 13px;">{{ empresa.nome_fantasia|default:empresa.razao_social }}</div>
+        {% if empresa.razao_social and empresa.nome_fantasia %}
+        <div class="muted">{{ empresa.razao_social }}</div>
+        {% endif %}
+        {% if empresa.cnpj %}
+        <div>CNPJ: {{ empresa.cnpj }}</div>
+        {% endif %}
+        <div class="muted">{{ loja.nome }}</div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div>
+        <div><strong>Pedido:</strong> #{{ pedido.id }}</div>
+        <div><strong>Data:</strong> {{ pedido.data_emissao|date:"d/m/Y H:i" }}</div>
+        {% if pedido.numero_cupom_fiscal %}
+        <div><strong>Cupom:</strong> {{ pedido.numero_cupom_fiscal }}</div>
+        {% endif %}
+        {% if pedido.data_emissao_cupom %}
+        <div><strong>Emissão cupom:</strong> {{ pedido.data_emissao_cupom|date:"d/m/Y H:i" }}</div>
+        {% endif %}
+        {% if pedido.cpf_cnpj_nota %}
+        <div><strong>CPF/CNPJ:</strong> {{ pedido.cpf_cnpj_nota }}</div>
+        {% endif %}
+    </div>
+
+    <div class="hr"></div>
+
+    <div>
+        <div><strong>Cliente:</strong> {{ pedido.cliente.nome_razao_social|default:"Consumidor final" }}</div>
+    </div>
+
+    <div class="hr"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="num">Qtd</th>
+                <th class="num">Vl Unit</th>
+                <th class="num">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in itens %}
+            <tr>
+                <td>
+                    <div style="font-weight: 700;">{{ item.produto.descricao }}</div>
+                    <div class="muted">Cód: {{ item.produto.codigo_interno|default:"-" }}</div>
+                </td>
+                <td class="num">{{ item.quantidade|floatformat:3 }}</td>
+                <td class="num">R$ {{ item.preco_unitario|floatformat:2 }}</td>
+                <td class="num">R$ {{ item.total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="hr"></div>
+
+    <div class="row total">
+        <div>TOTAL</div>
+        <div>R$ {{ pedido.valor_total|floatformat:2 }}</div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div>
+        <div style="font-weight: 700; margin-bottom: 4px;">Pagamento(s)</div>
+        {% if pagamentos %}
+            {% for p in pagamentos %}
+            <div class="row">
+                <div>{{ p.get_tipo_display|default:p.tipo }}</div>
+                <div>R$ {{ p.valor|floatformat:2 }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="muted">Não informado.</div>
+        {% endif %}
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="center muted">
+        Obrigado pela preferência.
+    </div>
+</body>
+</html>
+
