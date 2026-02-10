@@ -12,9 +12,9 @@ class Empresa(BaseModel):
     """
     nome_fantasia = models.CharField('Nome Fantasia', max_length=255)
     razao_social = models.CharField('Razão Social', max_length=255)
-    cnpj = EncryptedCharField('CNPJ', max_length=18)
+    cnpj = EncryptedCharField('CNPJ', max_length=255)  # 255 para valor criptografado no DB
     inscricao_estadual = models.CharField('Inscrição Estadual', max_length=20, blank=True, null=True)
-    telefone = EncryptedCharField('Telefone', max_length=20, blank=True, null=True)
+    telefone = EncryptedCharField('Telefone', max_length=255, blank=True, null=True)  # 255 para valor criptografado
     email = models.EmailField('E-mail', blank=True, null=True)
     
     # Endereço
@@ -46,9 +46,9 @@ class Loja(BaseModel):
         verbose_name='Empresa',
     )
     nome = models.CharField('Nome', max_length=255)
-    cnpj = EncryptedCharField('CNPJ', max_length=18, blank=True, null=True)
+    cnpj = EncryptedCharField('CNPJ', max_length=255, blank=True, null=True)  # 255 para valor criptografado
     inscricao_estadual = models.CharField('Inscrição Estadual', max_length=20, blank=True, null=True)
-    telefone = EncryptedCharField('Telefone', max_length=20, blank=True, null=True)
+    telefone = EncryptedCharField('Telefone', max_length=255, blank=True, null=True)  # 255 para valor criptografado
     email = models.EmailField('E-mail', blank=True, null=True)
     
     # Endereço
