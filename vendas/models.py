@@ -145,7 +145,7 @@ class PedidoVenda(BaseModel):
     )
     cpf_cnpj_nota = models.CharField(
         'CPF/CNPJ na Nota',
-        max_length=18,
+        max_length=20,
         blank=True,
         null=True,
         help_text='CPF ou CNPJ para incluir no documento fiscal',

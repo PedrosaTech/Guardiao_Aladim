@@ -88,7 +88,7 @@ class EventoVenda(BaseModel):
     
     estimativa_publico = models.IntegerField('Estimativa de Público', null=True, blank=True)
     responsavel_evento = models.CharField('Responsável pelo Evento', max_length=255)
-    telefone_responsavel = EncryptedCharField('Telefone do Responsável', max_length=20)
+    telefone_responsavel = EncryptedCharField('Telefone do Responsável', max_length=255)
     equipe_responsavel = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         blank=True,

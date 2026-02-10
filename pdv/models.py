@@ -139,7 +139,7 @@ class CompradorPirotecnia(BaseModel):
     ]
     
     # Dados pessoais
-    cpf = models.CharField('CPF', max_length=14, help_text='CPF formatado: 000.000.000-00')
+    cpf = models.CharField('CPF', max_length=16, help_text='CPF formatado: 000.000.000-00')
     nome_completo = models.CharField('Nome Completo', max_length=255)
     data_nascimento = models.DateField('Data de Nascimento')
     

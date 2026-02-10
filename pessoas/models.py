@@ -38,11 +38,11 @@ class Cliente(BaseModel):
     tipo_pessoa = models.CharField('Tipo de Pessoa', max_length=2, choices=TIPO_PESSOA_CHOICES)
     nome_razao_social = models.CharField('Nome / Razão Social', max_length=255)
     apelido_nome_fantasia = models.CharField('Apelido / Nome Fantasia', max_length=255, blank=True, null=True)
-    cpf_cnpj = EncryptedCharField('CPF / CNPJ', max_length=18)
+    cpf_cnpj = EncryptedCharField('CPF / CNPJ', max_length=255)  # 255 para valor criptografado
     rg_inscricao_estadual = models.CharField('RG / Inscrição Estadual', max_length=20, blank=True, null=True)
     data_nascimento = models.DateField('Data de Nascimento', blank=True, null=True)
-    telefone = EncryptedCharField('Telefone', max_length=20, blank=True, null=True)
-    whatsapp = EncryptedCharField('WhatsApp', max_length=20, blank=True, null=True)
+    telefone = EncryptedCharField('Telefone', max_length=255, blank=True, null=True)
+    whatsapp = EncryptedCharField('WhatsApp', max_length=255, blank=True, null=True)
     email = models.EmailField('E-mail', blank=True, null=True)
     
     # Endereço
@@ -79,10 +79,10 @@ class Fornecedor(BaseModel):
     )
     razao_social = models.CharField('Razão Social', max_length=255)
     nome_fantasia = models.CharField('Nome Fantasia', max_length=255, blank=True, null=True)
-    cnpj = EncryptedCharField('CNPJ', max_length=18)
+    cnpj = EncryptedCharField('CNPJ', max_length=255)
     inscricao_estadual = models.CharField('Inscrição Estadual', max_length=20, blank=True, null=True)
-    telefone = EncryptedCharField('Telefone', max_length=20, blank=True, null=True)
-    whatsapp = EncryptedCharField('WhatsApp', max_length=20, blank=True, null=True)
+    telefone = EncryptedCharField('Telefone', max_length=255, blank=True, null=True)
+    whatsapp = EncryptedCharField('WhatsApp', max_length=255, blank=True, null=True)
     email = models.EmailField('E-mail', blank=True, null=True)
     
     # Endereço

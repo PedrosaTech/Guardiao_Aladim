@@ -44,8 +44,8 @@ class Lead(BaseModel):
         verbose_name='Loja',
     )
     nome = models.CharField('Nome', max_length=255)
-    telefone = EncryptedCharField('Telefone', max_length=20, blank=True, null=True)
-    whatsapp = EncryptedCharField('WhatsApp', max_length=20, blank=True, null=True)
+    telefone = EncryptedCharField('Telefone', max_length=255, blank=True, null=True)
+    whatsapp = EncryptedCharField('WhatsApp', max_length=255, blank=True, null=True)
     email = models.EmailField('E-mail', blank=True, null=True)
     origem = models.CharField('Origem', max_length=20, choices=ORIGEM_CHOICES, default='OUTROS')
     status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='NOVO')

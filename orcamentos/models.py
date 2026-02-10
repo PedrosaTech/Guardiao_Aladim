@@ -79,8 +79,8 @@ class OrcamentoVenda(BaseModel):
     
     # Contato
     nome_responsavel = models.CharField('Nome do Responsável', max_length=255)
-    telefone_contato = EncryptedCharField('Telefone de Contato', max_length=20, blank=True, null=True)
-    whatsapp_contato = EncryptedCharField('WhatsApp de Contato', max_length=20, blank=True, null=True)
+    telefone_contato = EncryptedCharField('Telefone de Contato', max_length=255, blank=True, null=True)
+    whatsapp_contato = EncryptedCharField('WhatsApp de Contato', max_length=255, blank=True, null=True)
     email_contato = models.EmailField('E-mail de Contato', blank=True, null=True)
     
     # Classificação

@@ -30,7 +30,7 @@ class ConfiguracaoFiscalLoja(BaseModel):
         related_name='configuracao_fiscal',
         verbose_name='Loja',
     )
-    cnpj = EncryptedCharField('CNPJ', max_length=18)
+    cnpj = EncryptedCharField('CNPJ', max_length=255)  # 255 para valor criptografado no DB
     inscricao_estadual = models.CharField('Inscrição Estadual', max_length=20)
     regime_tributario = models.CharField(
         'Regime Tributário',
