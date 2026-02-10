@@ -12,8 +12,7 @@ services:
     plan: free
 
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --no-input
-    startCommand: gunicorn guardiao_aladin.wsgi:application
-    preDeployCommand: python manage.py migrate && python manage.py load_initial_data
+    startCommand: python manage.py migrate --no-input && python manage.py load_initial_data && gunicorn guardiao_aladin.wsgi:application
 
     envVars:
       - key: DATABASE_URL
