@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -125,6 +126,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Diretório de fixtures para loaddata (deploy com dados iniciais)
+FIXTURE_DIRS = [BASE_DIR / 'data' / 'fixtures']
 
 # Media files
 MEDIA_URL = 'media/'
@@ -155,11 +158,13 @@ REST_FRAMEWORK = {
     ],
 }
 
-# CORS e CSRF
-# TODO: Configurar CORS_ALLOWED_ORIGINS em produção
-# TODO: Configurar CSRF_TRUSTED_ORIGINS em produção
-CORS_ALLOW_ALL_ORIGINS = False  # Mudar para False em produção
-CSRF_TRUSTED_ORIGINS = []  # Adicionar domínios permitidos em produção
+# CORS e CSRF (produção: configurar via env no Render)
+CORS_ALLOW_ALL_ORIGINS = False
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
 
 # Configuração de autenticação
 # Redireciona para o admin login quando necessário

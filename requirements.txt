@@ -17,6 +17,11 @@ weasyprint>=60.0
 # Criptografia LGPD
 cryptography>=41.0.7
 
+# Produção (Render)
+gunicorn>=21.0.0
+whitenoise>=6.6.0
+python-json-logger>=2.0.0
+
 # TODO: Adicionar outras dependências conforme necessário:
 # - django-cors-headers (para CORS em produção)
 # - django-filter (para filtros na API)

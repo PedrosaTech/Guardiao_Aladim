@@ -95,6 +95,39 @@ A API REST está disponível em `/api/v1/` com os seguintes endpoints:
 - `/api/v1/leads/`
 - `/api/v1/interacoes-crm/`
 
+## Deploy no Render (produção)
+
+O projeto inclui um [render.yaml](render.yaml) (Blueprint) para deploy no Render com PostgreSQL e dados iniciais.
+
+### Pré-requisito: fixture de dados
+
+Antes do primeiro deploy, exporte os dados do banco local e commite o fixture (veja [data/fixtures/README.md](data/fixtures/README.md)):
+
+```bash
+python manage.py dumpdata --natural-foreign --natural-primary -e contenttypes -e auth.Permission -e sessions.Session --indent 2 -o data/fixtures/initial_data.json
+# Commitar data/fixtures/initial_data.json
+```
+
+### Passos no Render
+
+1. No [Render Dashboard](https://dashboard.render.com), **New > Blueprint**.
+2. Conecte o repositório e selecione o branch (ex.: `main`).
+3. Revise os recursos (PostgreSQL + Web Service) e aplique. O Render criará o banco e o serviço e injetará `DATABASE_URL` e as demais variáveis.
+4. No primeiro deploy, o **preDeployCommand** roda `migrate` e `load_initial_data`, populando o PostgreSQL com o conteúdo de `initial_data.json`.
+
+### Variáveis de ambiente (Render)
+
+O Blueprint já define: `DATABASE_URL`, `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `ENCRYPTION_KEY`, `DJANGO_SETTINGS_MODULE`, `CSRF_TRUSTED_ORIGINS`. Para domínio próprio, adicione em **Environment** no Dashboard:
+
+- `ALLOWED_HOSTS`: ex. `seu-dominio.com,.onrender.com`
+- `CSRF_TRUSTED_ORIGINS`: ex. `https://seu-dominio.com,https://guardiao-aladin.onrender.com`
+
+### Mídia (/media)
+
+O filesystem no Render é efêmero. Uploads em `/media` podem ser perdidos em novo deploy. Para arquivos permanentes, configure depois armazenamento externo (ex.: S3) ou disco persistente do Render.
+
+---
+
 ## Testes
 
 Execute os testes com pytest:

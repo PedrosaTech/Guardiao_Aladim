@@ -54,4 +54,12 @@ codigos_alternativos_reais.csv
 
 # Gerador de fornecedores (CSV regenerável)
 fornecedores_pirotecnia_gerados.csv
-fornecedores_pirotecnia.csv
+fornecedores_pirotecnia.csv# Arquivos/pastas locais (não versionar)
+/docs/
+/scripts/
+/import_fornecedores.py
+/pdv/tests.py
+/pdv_movel/tests.py
+/estoque/management/
+/pessoas/management/
+/produtos/management/commands/import_produtos_reais.py
