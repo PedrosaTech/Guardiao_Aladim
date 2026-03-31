@@ -173,8 +173,76 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Status e Entrada em Estoque -->
+                <div class="card">
+                    <h2>Status</h2>
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Status da Nota</span>
+                        <span class="info-value">{{ nota.get_status_display }}</span>
+                    </div>
+                    {% if nota.data_entrada_estoque %}
+                    <div class="info-item" style="margin-bottom: 15px;">
+                        <span class="info-label">Última entrada em estoque</span>
+                        <span class="info-value">{{ nota.data_entrada_estoque|date:"d/m/Y H:i" }}{% if nota.usuario_entrada_estoque %} por {{ nota.usuario_entrada_estoque.get_full_name|default:nota.usuario_entrada_estoque.username }}{% endif %}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if pode_dar_entrada %}
+                    <form method="post" action="{% url 'fiscal:dar_entrada_estoque_nota' nota.id %}" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+                        {% csrf_token %}
+                        {% if itens_sem_vinculo.exists %}
+                        <div style="background: #fff3cd; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                            <strong>Atenção:</strong> {{ itens_sem_vinculo.count }} item(ns) não vinculado(s) serão ignorados.
+                        </div>
+                        {% endif %}
+                        <div style="margin-bottom: 12px;">
+                            <label for="id_local_estoque" style="display: block; font-weight: 600; margin-bottom: 6px;">Local de Estoque</label>
+                            <select name="local_estoque" id="id_local_estoque" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="">---------</option>
+                                {% for loc in locais_estoque %}
+                                <option value="{{ loc.id }}">{{ loc.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn" style="background: #27ae60; color: white;">Dar entrada em estoque</button>
+                    </form>
+                    {% elif nota.status == 'ESTOQUE_TOTAL' %}
+                    <p style="color: #27ae60; margin-top: 15px;">Todos os itens vinculados já tiveram entrada em estoque.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
+
+        {% if itens %}
+        <div class="card" style="margin-top: 20px;">
+            <h2>Itens da Nota</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #34495e; color: white;">
+                        <th style="padding: 10px; text-align: left;">Item</th>
+                        <th style="padding: 10px; text-align: left;">Descrição</th>
+                        <th style="padding: 10px; text-align: left;">Produto</th>
+                        <th style="padding: 10px; text-align: right;">Qtd</th>
+                        <th style="padding: 10px; text-align: right;">Valor</th>
+                        <th style="padding: 10px; text-align: left;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px;">{{ item.numero_item }}</td>
+                        <td style="padding: 10px;">{{ item.descricao }}</td>
+                        <td style="padding: 10px;">{% if item.produto %}{{ item.produto.codigo_interno|default:item.produto.descricao }}{% else %}—{% endif %}</td>
+                        <td style="padding: 10px; text-align: right;">{{ item.quantidade }} {{ item.unidade_comercial }}</td>
+                        <td style="padding: 10px; text-align: right;">R$ {{ item.valor_total|floatformat:2 }}</td>
+                        <td style="padding: 10px;">{{ item.get_status_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
     </div>
 </body>
 </html>

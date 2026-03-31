@@ -44,6 +44,9 @@ db.sqlite3-journal
 .env
 .env.local
 
+# Auxiliar local (mensagens de commit)
+.git_commit_msg.txt
+
 # OS
 .DS_Store
 Thumbs.db
@@ -54,7 +57,9 @@ codigos_alternativos_reais.csv
 
 # Gerador de fornecedores (CSV regenerável)
 fornecedores_pirotecnia_gerados.csv
-fornecedores_pirotecnia.csv# Arquivos/pastas locais (não versionar)
+fornecedores_pirotecnia.csv
+
+# Arquivos/pastas locais (não versionar)
 /docs/
 /scripts/
 /import_fornecedores.py

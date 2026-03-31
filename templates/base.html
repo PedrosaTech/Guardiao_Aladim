@@ -218,6 +218,10 @@
                     <span class="menu-item-icon">📥</span>
                     NF-e Entrada
                 </a>
+                <a href="{% url 'fiscal:lista_alertas_sefaz' %}" class="menu-item {% if 'alertas-sefaz' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">🔔</span>
+                    Alertas SEFAZ
+                </a>
             </div>
             
             <div class="menu-section">

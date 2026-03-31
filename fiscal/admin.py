@@ -2,7 +2,7 @@
 Admin para modelos fiscais.
 """
 from django.contrib import admin
-from .models import ConfiguracaoFiscalLoja, NotaFiscalSaida, NotaFiscalEntrada
+from .models import ConfiguracaoFiscalLoja, NotaFiscalSaida, NotaFiscalEntrada, ItemNotaFiscalEntrada, HistoricoEntradaEstoque, AlertaNotaFiscal
 
 
 @admin.register(ConfiguracaoFiscalLoja)
@@ -85,11 +85,35 @@ class NotaFiscalSaidaAdmin(admin.ModelAdmin):
     )
 
 
+class ItemNotaFiscalEntradaInline(admin.TabularInline):
+    model = ItemNotaFiscalEntrada
+    extra = 0
+    fields = ['numero_item', 'descricao', 'produto', 'quantidade', 'preco_unitario', 'valor_total', 'status']
+    readonly_fields = ['numero_item', 'descricao', 'valor_total']
+
+
 @admin.register(NotaFiscalEntrada)
 class NotaFiscalEntradaAdmin(admin.ModelAdmin):
-    list_display = ['numero', 'serie', 'loja', 'fornecedor', 'valor_total', 'data_emissao', 'data_entrada']
-    list_filter = ['loja', 'data_emissao', 'data_entrada']
+    list_display = ['numero', 'serie', 'loja', 'fornecedor', 'valor_total', 'status', 'data_emissao', 'data_entrada']
+    list_filter = ['status', 'loja', 'data_emissao', 'data_entrada']
     search_fields = ['numero', 'chave_acesso', 'fornecedor__razao_social']
     readonly_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
     date_hierarchy = 'data_entrada'
+    inlines = [ItemNotaFiscalEntradaInline]
+
+
+@admin.register(HistoricoEntradaEstoque)
+class HistoricoEntradaEstoqueAdmin(admin.ModelAdmin):
+    list_display = ['nota_fiscal', 'usuario', 'data_processamento', 'itens_processados', 'motivo_parcial']
+    list_filter = ['motivo_parcial']
+    search_fields = ['nota_fiscal__numero', 'nota_fiscal__chave_acesso']
+    readonly_fields = ['data_processamento']
+
+
+@admin.register(AlertaNotaFiscal)
+class AlertaNotaFiscalAdmin(admin.ModelAdmin):
+    list_display = ['numero', 'serie', 'loja', 'razao_social_emitente', 'valor_total', 'status', 'data_consulta_sefaz']
+    list_filter = ['status', 'tipo', 'loja']
+    search_fields = ['chave_acesso', 'razao_social_emitente', 'cnpj_emitente']
+    readonly_fields = ['data_consulta_sefaz', 'created_at', 'updated_at']
 

@@ -133,6 +133,9 @@ FIXTURE_DIRS = [BASE_DIR / 'data' / 'fixtures']
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Diretório temporário para importação de NF-e (evita sessão com XML grande)
+NFE_IMPORT_TMP_DIR = BASE_DIR / 'media' / 'tmp' / 'nfe_import'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

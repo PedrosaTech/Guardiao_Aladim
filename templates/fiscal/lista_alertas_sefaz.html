@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alertas SEFAZ-BA - Guardião Aladin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .stat-card h3 { color: #7f8c8d; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-card .value { font-size: 24px; font-weight: 600; color: #2c3e50; }
+        .table-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #34495e; color: white; }
+        th { padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-pendente { background: #f39c12; color: white; }
+        .badge-importada { background: #27ae60; color: white; }
+        .badge-ignorada { background: #95a5a6; color: white; }
+        .btn { padding: 6px 12px; border-radius: 5px; font-size: 12px; text-decoration: none; display: inline-block; }
+        .btn-info { background: #3498db; color: white; }
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-state h3 { color: #7f8c8d; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🔔 Alertas SEFAZ-BA</h1>
+                <p style="margin-top: 8px; opacity: 0.9;">Notas fiscais detectadas via API SEFAZ (emitidas no CNPJ da empresa)</p>
+            </div>
+            <a href="{% url 'fiscal:lista_notas_entrada' %}" class="btn btn-info">← Voltar às Notas de Entrada</a>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Total de Alertas</h3>
+                <div class="value">{{ alertas.count }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Pendentes</h3>
+                <div class="value">{{ total_pendentes }}</div>
+            </div>
+        </div>
+
+        {% if alertas %}
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Número/Série</th>
+                        <th>Emitente</th>
+                        <th>Loja</th>
+                        <th>Valor</th>
+                        <th>Data Emissão</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in alertas %}
+                    <tr>
+                        <td><strong>{{ a.numero }}/{{ a.serie }}</strong></td>
+                        <td>{{ a.razao_social_emitente|default:"-" }}</td>
+                        <td>{{ a.loja.nome }}</td>
+                        <td>{% if a.valor_total %}R$ {{ a.valor_total|floatformat:2 }}{% else %}-{% endif %}</td>
+                        <td>{{ a.data_emissao|date:"d/m/Y"|default:"-" }}</td>
+                        <td><span class="badge badge-{{ a.status|lower }}">{{ a.get_status_display }}</span></td>
+                        <td>
+                            {% if a.status == 'PENDENTE' %}
+                            <a href="{% url 'fiscal:importar_nota_entrada_xml' %}" class="btn btn-info">Importar</a>
+                            {% elif a.nota_fiscal_entrada %}
+                            <a href="{% url 'fiscal:detalhes_nota_entrada' a.nota_fiscal_entrada.id %}" class="btn btn-info">Ver Nota</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Nenhum alerta da SEFAZ no momento</h3>
+            <p>Execute o comando <code>python manage.py consultar_sefaz_alertas</code> para buscar notas emitidas no CNPJ da empresa.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

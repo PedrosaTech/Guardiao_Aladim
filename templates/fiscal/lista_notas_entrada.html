@@ -156,10 +156,17 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📥 Notas Fiscais de Entrada</h1>
-            <div style="margin-top: 10px; font-size: 14px; opacity: 0.9;">
-                NF-e recebidas de fornecedores
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h1>📥 Notas Fiscais de Entrada</h1>
+                <div style="margin-top: 10px; font-size: 14px; opacity: 0.9;">
+                    NF-e recebidas de fornecedores
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="{% url 'fiscal:criar_nota_entrada' %}" class="btn btn-primary">📝 Digitação Manual</a>
+                <a href="{% url 'fiscal:importar_nota_entrada_xml' %}" class="btn btn-info">📤 Importar XML</a>
+                <a href="{% url 'fiscal:lista_alertas_sefaz' %}" class="btn" style="background: #f39c12; color: white;">🔔 Alertas SEFAZ</a>
             </div>
         </div>
 

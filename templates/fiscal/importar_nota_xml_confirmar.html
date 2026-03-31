@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Importação - Guardião Aladin{% endblock %}
+{% block page_title %}Confirmar Importação da NF-e{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirm-header { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; }
+    .confirm-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 1000px; margin: 0 auto; }
+    .dados-preview { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
+    .dados-preview table { width: 100%; }
+    .dados-preview td { padding: 8px 0; }
+    .dados-preview td:first-child { font-weight: 600; color: #555; width: 140px; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
+    .form-group select, .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 25px; padding-top: 20px; border-top: 2px solid #f0f0f0; }
+    .btn { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; font-weight: 600; }
+    .btn-secondary { background: #95a5a6; color: white; }
+    .btn-primary { background: #27ae60; color: white; }
+    .itens-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .itens-table th, .itens-table td { padding: 10px; border: 1px solid #eee; text-align: left; }
+    .itens-table th { background: #34495e; color: white; font-size: 12px; }
+    .itens-table select { width: 100%; padding: 6px; font-size: 13px; }
+    .badge-vinculado { background: #27ae60; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-sugestao { background: #f39c12; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-nao { background: #95a5a6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-header">
+    <h1>✅ Confirmar Importação</h1>
+    <p style="margin-top: 8px; opacity: 0.9;">Revise os dados extraídos do XML e selecione a loja e o fornecedor</p>
+</div>
+
+<div class="confirm-card">
+    <div class="dados-preview">
+        <h4 style="margin-bottom: 15px;">Dados extraídos do XML</h4>
+        <table>
+            <tr><td>Número</td><td>{{ dados.numero }}/{{ dados.serie }}</td></tr>
+            <tr><td>Chave de Acesso</td><td>{{ dados.chave_acesso }}</td></tr>
+            <tr><td>Valor Total</td><td>R$ {{ dados.valor_total }}</td></tr>
+            <tr><td>Data Emissão</td><td>{{ dados.data_emissao|date:"d/m/Y" }}</td></tr>
+            <tr><td>Emitente (CNPJ)</td><td>{{ dados.cnpj_emitente }}</td></tr>
+            <tr><td>Razão Social Emitente</td><td>{{ dados.razao_social_emitente|default:"-" }}</td></tr>
+        </table>
+    </div>
+
+    <form method="post" action="{% url 'fiscal:importar_nota_entrada_xml' %}">
+        {% csrf_token %}
+        <input type="hidden" name="confirmar_import" value="1">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="id_loja">Loja *</label>
+                <select name="loja" id="id_loja" required>
+                    <option value="">---------</option>
+                    {% for loja in lojas %}
+                    <option value="{{ loja.id }}">{{ loja.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="id_fornecedor">Fornecedor *</label>
+                <select name="fornecedor" id="id_fornecedor" required>
+                    <option value="">---------</option>
+                    {% for forn in fornecedores %}
+                    <option value="{{ forn.id }}">{{ forn.razao_social }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="id_data_entrada">Data de Entrada</label>
+            <input type="date" name="data_entrada" id="id_data_entrada" value="{{ dados.data_emissao|date:'Y-m-d' }}">
+        </div>
+
+        {% if itens %}
+        <div class="form-group" style="margin-top: 25px;">
+            <h4 style="margin-bottom: 15px;">Itens da Nota — Vincule o produto de cada item</h4>
+            <table class="itens-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Descrição</th>
+                        <th>Cód/EAN</th>
+                        <th>NCM</th>
+                        <th>Qtd</th>
+                        <th>Valor</th>
+                        <th>Produto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                    <tr>
+                        <td>{{ item.numero_item }}</td>
+                        <td>{{ item.descricao|truncatewords:8 }}</td>
+                        <td>{{ item.codigo_barras|default:item.codigo_produto_fornecedor|default:"-" }}</td>
+                        <td>{{ item.ncm|default:"-" }}</td>
+                        <td>{{ item.quantidade }} {{ item.unidade_comercial }}</td>
+                        <td>R$ {{ item.valor_total }}</td>
+                        <td>
+                            <select name="item_{{ item.numero_item }}_produto">
+                                <option value="">— Não vinculado</option>
+                                {% for p in produtos %}
+                                <option value="{{ p.id }}" {% if item.produto and p.id == item.produto.id %}selected{% elif item.produto_sugerido and not item.produto and p.id == item.produto_sugerido.id %}selected{% endif %}>
+                                    {{ p.codigo_interno|default:"" }}{% if p.codigo_interno %} - {% endif %}{{ p.descricao|truncatewords:4 }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <a href="{% url 'fiscal:importar_nota_entrada_confirmar' %}?cancelar=1" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">✅ Importar Nota</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

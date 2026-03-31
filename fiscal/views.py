@@ -4,12 +4,17 @@ Views do módulo fiscal.
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, JsonResponse
 from django.template.loader import render_to_string
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
-from .models import NotaFiscalSaida, NotaFiscalEntrada, ConfiguracaoFiscalLoja
+from decimal import Decimal
+
+from .models import NotaFiscalSaida, NotaFiscalEntrada, ItemNotaFiscalEntrada, ConfiguracaoFiscalLoja, AlertaNotaFiscal
+from .forms import NotaFiscalEntradaForm, ItemNotaFiscalEntradaFormSet
+from .import_nfe import parse_nfe_xml
 
 try:
     from weasyprint import HTML
@@ -265,20 +270,387 @@ def lista_notas_entrada(request):
 def detalhes_nota_entrada(request, nota_id):
     """
     Detalhes completos da nota fiscal de entrada.
+    Exibe itens, botão "Dar entrada em estoque" e aviso de itens não vinculados.
     """
     nota = get_object_or_404(
         NotaFiscalEntrada.objects.select_related(
             'loja', 'fornecedor'
-        ),
+        ).prefetch_related('itens__produto', 'historico_entrada_estoque'),
         id=nota_id,
         is_active=True
     )
-    
+
+    itens = nota.itens.filter(is_active=True).order_by('numero_item')
+    itens_vinculados = itens.exclude(produto__isnull=True)
+    itens_sem_vinculo = itens.filter(produto__isnull=True)
+    itens_pendentes_entrada = itens_vinculados.exclude(status='ESTOQUE_ENTRADO')
+
+    from estoque.models import LocalEstoque
+    locais_estoque = LocalEstoque.objects.filter(
+        loja=nota.loja,
+        is_active=True
+    ).order_by('nome')
+
     context = {
         'nota': nota,
+        'itens': itens,
+        'itens_sem_vinculo': itens_sem_vinculo,
+        'itens_pendentes_entrada': itens_pendentes_entrada,
+        'locais_estoque': locais_estoque,
+        'pode_dar_entrada': itens_pendentes_entrada.exists() and locais_estoque.exists(),
     }
-    
     return render(request, 'fiscal/detalhes_nota_entrada.html', context)
+
+
+@login_required
+@require_http_methods(['POST'])
+def dar_entrada_estoque_nota_view(request, nota_id):
+    """
+    Processa a entrada em estoque para os itens vinculados da nota.
+    """
+    nota = get_object_or_404(NotaFiscalEntrada, id=nota_id, is_active=True)
+    local_id = request.POST.get('local_estoque')
+    if not local_id:
+        messages.error(request, 'Selecione o local de estoque.')
+        return redirect('fiscal:detalhes_nota_entrada', nota_id=nota.id)
+
+    from estoque.models import LocalEstoque
+    local = get_object_or_404(LocalEstoque, id=local_id, loja=nota.loja, is_active=True)
+
+    from .services_entrada import dar_entrada_estoque_nota
+    itens_processados, erros, motivo_parcial = dar_entrada_estoque_nota(
+        nota, local, request.user
+    )
+
+    if itens_processados > 0:
+        if erros:
+            messages.warning(
+                request,
+                f'{itens_processados} item(ns) processado(s). Erros: {" | ".join(erros[:3])}'
+                + (f' (+{len(erros)-3} mais)' if len(erros) > 3 else '')
+            )
+        else:
+            messages.success(request, f'Entrada em estoque realizada: {itens_processados} item(ns) processado(s).')
+    else:
+        if erros:
+            messages.error(request, 'Nenhum item processado. ' + (erros[0] if erros else ''))
+        else:
+            messages.warning(request, 'Nenhum item vinculado pendente de entrada.')
+
+    return redirect('fiscal:detalhes_nota_entrada', nota_id=nota.id)
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def criar_nota_entrada(request):
+    """
+    Digitação manual de Nota Fiscal de Entrada com itens (formset).
+    Nota criada com status RASCUNHO se sem itens; CONFIRMADA se com itens.
+    """
+    from core.models import Loja
+    from pessoas.models import Fornecedor
+
+    loja_para_formset = None
+    if request.method == 'POST':
+        loja_id = request.POST.get('loja')
+        if loja_id:
+            try:
+                loja_para_formset = Loja.objects.get(id=loja_id, is_active=True)
+            except Loja.DoesNotExist:
+                pass
+    if loja_para_formset is None:
+        loja_para_formset = Loja.objects.filter(is_active=True).first()
+
+    formset = ItemNotaFiscalEntradaFormSet(loja=loja_para_formset)
+
+    if request.method == 'POST':
+        form = NotaFiscalEntradaForm(request.POST)
+        formset = ItemNotaFiscalEntradaFormSet(request.POST, loja=loja_para_formset)
+
+        if form.is_valid() and formset.is_valid():
+            itens_com_dados = [f for f in formset if f.cleaned_data and f.cleaned_data.get('produto')]
+            nota = form.save(commit=False)
+            nota.created_by = request.user
+            nota.updated_by = request.user
+            nota.status = 'CONFIRMADA' if itens_com_dados else 'RASCUNHO'
+            nota.save()
+
+            for idx, item_form in enumerate(itens_com_dados, start=1):
+                cd = item_form.cleaned_data
+                if not cd.get('produto'):
+                    continue
+                produto = cd['produto']
+                qtd = cd['quantidade']
+                preco = cd['preco_unitario']
+                valor_total = qtd * preco
+                local = cd.get('local_estoque')
+                if local and local.loja_id != nota.loja_id:
+                    local = None
+                ItemNotaFiscalEntrada.objects.create(
+                    nota_fiscal=nota,
+                    produto=produto,
+                    numero_item=idx,
+                    descricao=produto.descricao,
+                    quantidade=qtd,
+                    preco_unitario=preco,
+                    valor_total=valor_total,
+                    local_estoque=local,
+                    status='VINCULADO',
+                )
+
+            messages.success(
+                request,
+                f'Nota Fiscal {nota.numero}/{nota.serie} cadastrada com sucesso.'
+                + (f' {len(itens_com_dados)} item(ns) incluído(s).' if itens_com_dados else '')
+            )
+            return redirect('fiscal:detalhes_nota_entrada', nota_id=nota.id)
+        else:
+            if not form.is_valid():
+                messages.error(request, 'Corrija os erros no formulário.')
+            else:
+                messages.error(request, 'Corrija os erros nos itens.')
+    else:
+        form = NotaFiscalEntradaForm()
+
+    context = {
+        'form': form,
+        'formset': formset,
+        'lojas': Loja.objects.filter(is_active=True),
+        'fornecedores': Fornecedor.objects.filter(is_active=True),
+    }
+    return render(request, 'fiscal/nota_entrada_form.html', context)
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def importar_nota_entrada_xml(request):
+    """
+    Importação de Nota Fiscal de Entrada a partir de arquivo XML.
+    Passo 1: Upload do XML -> salva em tmp, chave na sessão.
+    Passo 2: Usuário confirma loja/fornecedor e vincula produtos nos itens.
+    """
+    from pessoas.models import Fornecedor
+    from core.models import Loja
+    from fiscal.storage_nfe import salvar_xml_temporario, carregar_xml_temporario, deletar_xml_temporario
+    from fiscal.produto_matching import encontrar_ou_sugerir_produto
+    from datetime import datetime
+
+    if request.method == 'POST':
+        # Confirmação: criar nota e itens
+        nfe_key = request.session.get('nfe_import_key')
+        if nfe_key and request.POST.get('confirmar_import') == '1':
+            try:
+                xml_content = carregar_xml_temporario(nfe_key)
+            except FileNotFoundError:
+                messages.warning(request, 'Arquivo temporário expirado. Faça o upload novamente.')
+                if 'nfe_import_key' in request.session:
+                    del request.session['nfe_import_key']
+                return redirect('fiscal:importar_nota_entrada_xml')
+
+            try:
+                dados = parse_nfe_xml(xml_content)
+            except ValueError as e:
+                messages.error(request, str(e))
+                return redirect('fiscal:importar_nota_entrada_xml')
+
+            loja_id = request.POST.get('loja')
+            fornecedor_id = request.POST.get('fornecedor')
+            data_entrada_str = request.POST.get('data_entrada')
+
+            if not loja_id or not fornecedor_id:
+                messages.error(request, 'Selecione a loja e o fornecedor.')
+                return redirect('fiscal:importar_nota_entrada_confirmar')
+
+            loja = get_object_or_404(Loja, id=loja_id, is_active=True)
+            fornecedor = get_object_or_404(Fornecedor, id=fornecedor_id, is_active=True)
+
+            data_emi = dados.get('data_emissao')
+            if isinstance(data_emi, str):
+                data_emi = datetime.strptime(data_emi, '%Y-%m-%d').date()
+            data_entrada = datetime.strptime(data_entrada_str, '%Y-%m-%d').date() if data_entrada_str else data_emi
+
+            nota = NotaFiscalEntrada.objects.create(
+                loja=loja,
+                fornecedor=fornecedor,
+                numero=dados['numero'],
+                serie=dados['serie'],
+                chave_acesso=dados['chave_acesso'],
+                valor_total=Decimal(str(dados['valor_total'])),
+                data_emissao=data_emi,
+                data_entrada=data_entrada,
+                xml_arquivo=dados.get('xml_arquivo', ''),
+                status='CONFIRMADA',
+                created_by=request.user,
+                updated_by=request.user,
+            )
+
+            # Criar itens
+            itens = dados.get('itens', [])
+            for item_data in itens:
+                produto_id = request.POST.get(f"item_{item_data['numero_item']}_produto")
+                produto = None
+                produto_sugerido = None
+                status = 'NAO_VINCULADO'
+                if produto_id:
+                    try:
+                        from produtos.models import Produto
+                        produto = Produto.objects.get(id=produto_id, is_active=True)
+                        status = 'VINCULADO'
+                    except (ValueError, Produto.DoesNotExist):
+                        pass
+
+                ItemNotaFiscalEntrada.objects.create(
+                    nota_fiscal=nota,
+                    numero_item=item_data['numero_item'],
+                    codigo_produto_fornecedor=item_data.get('codigo_produto_fornecedor', ''),
+                    codigo_barras=item_data.get('codigo_barras', ''),
+                    ncm=item_data.get('ncm', ''),
+                    descricao=item_data.get('descricao', '')[:255],
+                    quantidade=item_data['quantidade'],
+                    unidade_comercial=item_data.get('unidade_comercial', 'UN')[:10],
+                    preco_unitario=item_data['preco_unitario'],
+                    valor_total=item_data['valor_total'],
+                    produto=produto,
+                    produto_sugerido=produto_sugerido,
+                    status=status,
+                    created_by=request.user,
+                    updated_by=request.user,
+                )
+
+            AlertaNotaFiscal.objects.filter(chave_acesso=dados['chave_acesso']).update(
+                status='IMPORTADA', nota_fiscal_entrada=nota, updated_by_id=request.user.id
+            )
+            deletar_xml_temporario(nfe_key)
+            del request.session['nfe_import_key']
+            messages.success(request, f'Nota Fiscal {nota.numero}/{nota.serie} importada com sucesso.')
+            return redirect('fiscal:detalhes_nota_entrada', nota_id=nota.id)
+
+        # Upload do XML
+        arquivo = request.FILES.get('arquivo_xml')
+        if not arquivo:
+            messages.error(request, 'Selecione um arquivo XML.')
+            return redirect('fiscal:importar_nota_entrada_xml')
+
+        if not arquivo.name.lower().endswith(('.xml', '.nfe')):
+            messages.error(request, 'O arquivo deve ser um XML de NF-e (.xml ou .nfe).')
+            return redirect('fiscal:importar_nota_entrada_xml')
+
+        try:
+            xml_content = arquivo.read().decode('utf-8', errors='replace')
+        except Exception as e:
+            messages.error(request, f'Erro ao ler arquivo: {e}')
+            return redirect('fiscal:importar_nota_entrada_xml')
+
+        try:
+            dados = parse_nfe_xml(xml_content)
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('fiscal:importar_nota_entrada_xml')
+
+        if NotaFiscalEntrada.objects.filter(chave_acesso=dados['chave_acesso'], is_active=True).exists():
+            messages.warning(request, 'Nota com esta chave já está cadastrada.')
+            return redirect('fiscal:lista_notas_entrada')
+
+        key = salvar_xml_temporario(xml_content)
+        request.session['nfe_import_key'] = key
+        return redirect('fiscal:importar_nota_entrada_confirmar')
+
+    return render(request, 'fiscal/importar_nota_xml.html')
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def importar_nota_entrada_confirmar(request):
+    """
+    Confirmação da importação - usuário seleciona loja, fornecedor e vincula produtos nos itens.
+    Dados carregados do arquivo temporário (chave na sessão).
+    """
+    from pessoas.models import Fornecedor
+    from core.models import Loja
+    from datetime import datetime
+    from fiscal.storage_nfe import carregar_xml_temporario, deletar_xml_temporario
+    from fiscal.produto_matching import encontrar_ou_sugerir_produto
+
+    nfe_key = request.session.get('nfe_import_key')
+    if not nfe_key:
+        messages.warning(request, 'Sessão expirada. Faça o upload do XML novamente.')
+        return redirect('fiscal:importar_nota_entrada_xml')
+
+    if request.method == 'GET' and request.GET.get('cancelar'):
+        deletar_xml_temporario(nfe_key)
+        if 'nfe_import_key' in request.session:
+            del request.session['nfe_import_key']
+        return redirect('fiscal:importar_nota_entrada_xml')
+
+    try:
+        xml_content = carregar_xml_temporario(nfe_key)
+    except FileNotFoundError:
+        messages.warning(request, 'Arquivo temporário expirado. Faça o upload novamente.')
+        if 'nfe_import_key' in request.session:
+            del request.session['nfe_import_key']
+        return redirect('fiscal:importar_nota_entrada_xml')
+
+    try:
+        dados = parse_nfe_xml(xml_content)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('fiscal:importar_nota_entrada_xml')
+
+    # Matching de produtos para cada item
+    primeira_loja = Loja.objects.filter(is_active=True).select_related('empresa').first()
+    empresa = primeira_loja.empresa if primeira_loja else None
+    fornecedor_match = None  # Será definido quando usuário selecionar
+
+    itens = dados.get('itens', [])
+    for item in itens:
+        produto, produto_sugerido, status = encontrar_ou_sugerir_produto(
+            item, fornecedor_match, empresa
+        )
+        item['produto'] = produto
+        item['produto_sugerido'] = produto_sugerido
+        item['status_matching'] = status
+
+    # Restaurar data para exibição
+    data_emi = dados.get('data_emissao')
+    if isinstance(data_emi, str):
+        try:
+            dados['data_emissao'] = datetime.strptime(data_emi, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            dados['data_emissao'] = datetime.now().date()
+    elif data_emi is None:
+        dados['data_emissao'] = datetime.now().date()
+
+    from produtos.models import Produto
+    produtos = Produto.objects.filter(is_active=True).order_by('descricao')
+
+    context = {
+        'dados': dados,
+        'itens': itens,
+        'lojas': Loja.objects.filter(is_active=True),
+        'fornecedores': Fornecedor.objects.filter(is_active=True),
+        'produtos': produtos,
+    }
+    return render(request, 'fiscal/importar_nota_xml_confirmar.html', context)
+
+
+@login_required
+def lista_alertas_sefaz(request):
+    """
+    Lista de alertas de notas fiscais da SEFAZ-BA.
+    """
+    alertas = AlertaNotaFiscal.objects.filter(
+        is_active=True
+    ).select_related('loja', 'nota_fiscal_entrada').order_by('-data_consulta_sefaz')
+
+    status_filter = request.GET.get('status')
+    if status_filter:
+        alertas = alertas.filter(status=status_filter)
+
+    context = {
+        'alertas': alertas,
+        'total_pendentes': alertas.filter(status='PENDENTE').count(),
+    }
+    return render(request, 'fiscal/lista_alertas_sefaz.html', context)
 
 
 @login_required

@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block title %}Cadastrar Nota Fiscal de Entrada - Guardião Aladin{% endblock %}
+{% block page_title %}Digitação Manual - Nota Fiscal de Entrada{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-header { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; }
+    .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 800px; margin: 0 auto; }
+    .form-section { margin-bottom: 25px; }
+    .form-section-title { color: #2c3e50; font-size: 15px; font-weight: 700; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #f0f0f0; }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; font-size: 13px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0; }
+    .btn { padding: 10px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; font-weight: 600; }
+    .btn-secondary { background: #95a5a6; color: white; }
+    .btn-primary { background: #27ae60; color: white; }
+    .btn-primary:hover { background: #219a52; }
+    .error-message { padding: 12px; background: #f8d7da; color: #721c24; border-radius: 6px; margin-bottom: 20px; }
+    .form-section-desc { color: #7f8c8d; font-size: 13px; margin-bottom: 12px; }
+    .formset-table-wrapper { overflow-x: auto; margin-top: 10px; }
+    .formset-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .formset-table th { padding: 10px 8px; text-align: left; background: #f8f9fa; border: 1px solid #e9ecef; font-weight: 600; }
+    .formset-table td { padding: 8px; border: 1px solid #e9ecef; vertical-align: middle; }
+    .formset-table input, .formset-table select { width: 100%; min-width: 80px; }
+    .formset-error { color: #dc3545; font-size: 12px; padding: 4px 8px !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-header">
+    <h1>📝 Digitação Manual - Nota Fiscal de Entrada</h1>
+    <p style="margin-top: 8px; opacity: 0.9;">Preencha os dados da NF-e recebida do fornecedor</p>
+</div>
+
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="error-message">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="form-section">
+            <div class="form-section-title">🏢 Loja e Fornecedor</div>
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.loja.label_tag }}
+                    {{ form.loja }}
+                    <small class="text-muted">Selecione a loja antes dos itens para carregar os locais de estoque.</small>
+                    {{ form.loja.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.fornecedor.label_tag }}
+                    {{ form.fornecedor }}
+                    {{ form.fornecedor.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">📄 Dados da Nota</div>
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.numero.label_tag }}
+                    {{ form.numero }}
+                    {{ form.numero.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.serie.label_tag }}
+                    {{ form.serie }}
+                    {{ form.serie.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.chave_acesso.label_tag }}
+                    {{ form.chave_acesso }}
+                    {{ form.chave_acesso.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">💰 Valores e Datas</div>
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.valor_total.label_tag }}
+                    {{ form.valor_total }}
+                    {{ form.valor_total.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.data_emissao.label_tag }}
+                    {{ form.data_emissao }}
+                    {{ form.data_emissao.errors }}
+                </div>
+                <div class="form-group">
+                    {{ form.data_entrada.label_tag }}
+                    {{ form.data_entrada }}
+                    {{ form.data_entrada.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">📦 Itens da Nota (opcional)</div>
+            <p class="form-section-desc">Adicione os itens da nota. Se não informar itens, a nota será salva como rascunho.</p>
+            <div class="formset-table-wrapper">
+                <table class="formset-table">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Quantidade</th>
+                            <th>Preço Unit.</th>
+                            <th>Local Estoque</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form_item in formset %}
+                        <tr class="formset-row">
+                            <td>{{ form_item.produto }}{{ form_item.produto.errors }}</td>
+                            <td>{{ form_item.quantidade }}{{ form_item.quantidade.errors }}</td>
+                            <td>{{ form_item.preco_unitario }}{{ form_item.preco_unitario.errors }}</td>
+                            <td>{{ form_item.local_estoque }}{{ form_item.local_estoque.errors }}</td>
+                        </tr>
+                        {% if form_item.non_field_errors %}
+                        <tr><td colspan="4" class="formset-error">{{ form_item.non_field_errors }}</td></tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {{ formset.management_form }}
+            <div class="total-itens-feedback" id="totalItensFeedback" style="margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-weight: 600; display: none;">
+                <span id="totalItensLabel">Soma dos itens: R$ 0,00</span>
+                <span id="totalItensStatus"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'fiscal:lista_notas_entrada' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary" id="btnCadastrar">✅ Cadastrar Nota</button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    const TOLERANCIA = 0.10;
+    const valorTotalInput = document.getElementById('id_valor_total');
+    const feedback = document.getElementById('totalItensFeedback');
+    const label = document.getElementById('totalItensLabel');
+    const statusSpan = document.getElementById('totalItensStatus');
+    const btnCadastrar = document.getElementById('btnCadastrar');
+
+    function parseDecimal(val) {
+        if (val === '' || val === null || val === undefined) return null;
+        const s = String(val).replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? null : n;
+    }
+
+    function calcularTotalItens() {
+        let total = 0;
+        const table = document.querySelector('.formset-table');
+        if (!table) return 0;
+        table.querySelectorAll('tbody tr.formset-row').forEach(function(row) {
+            const cells = row.querySelectorAll('td');
+            const qtdInput = cells[1] ? cells[1].querySelector('input') : null;
+            const precoInput = cells[2] ? cells[2].querySelector('input') : null;
+            const qtd = parseDecimal(qtdInput && qtdInput.value);
+            const preco = parseDecimal(precoInput && precoInput.value);
+            if (qtd != null && preco != null && qtd > 0 && preco > 0) {
+                total += qtd * preco;
+            }
+        });
+        return total;
+    }
+
+    function atualizarFeedback() {
+        const totalNota = parseDecimal(valorTotalInput && valorTotalInput.value);
+        const totalItens = calcularTotalItens();
+
+        if (totalNota == null || totalNota <= 0) {
+            feedback.style.display = 'none';
+            btnCadastrar.disabled = false;
+            return;
+        }
+
+        const temItens = totalItens > 0;
+        if (!temItens) {
+            feedback.style.display = 'none';
+            btnCadastrar.disabled = false;
+            return;
+        }
+
+        feedback.style.display = 'block';
+        label.textContent = 'Soma dos itens: R$ ' + totalItens.toFixed(2).replace('.', ',');
+        statusSpan.textContent = '';
+
+        const diferenca = Math.abs(totalItens - totalNota);
+        if (diferenca <= 0.001) {
+            feedback.style.background = '#d4edda';
+            feedback.style.color = '#155724';
+            feedback.style.border = '1px solid #c3e6cb';
+            statusSpan.textContent = ' ✓ Bate com o total da nota';
+            btnCadastrar.disabled = false;
+        } else if (diferenca <= TOLERANCIA) {
+            feedback.style.background = '#fff3cd';
+            feedback.style.color = '#856404';
+            feedback.style.border = '1px solid #ffeeba';
+            statusSpan.textContent = ' ⚠ Diferença de R$ ' + diferenca.toFixed(2).replace('.', ',') + ' (dentro da tolerância)';
+            btnCadastrar.disabled = false;
+        } else {
+            feedback.style.background = '#f8d7da';
+            feedback.style.color = '#721c24';
+            feedback.style.border = '1px solid #f5c6cb';
+            statusSpan.textContent = ' ✗ Divergência de R$ ' + diferenca.toFixed(2).replace('.', ',') + ' — corrija antes de salvar';
+            btnCadastrar.disabled = true;
+        }
+    }
+
+    if (valorTotalInput) {
+        valorTotalInput.addEventListener('input', atualizarFeedback);
+        valorTotalInput.addEventListener('change', atualizarFeedback);
+    }
+    document.querySelector('form').addEventListener('input', atualizarFeedback);
+    document.querySelector('form').addEventListener('change', atualizarFeedback);
+    atualizarFeedback();
+})();
+</script>
+{% endblock %}

@@ -1,12 +1,14 @@
 """
 Modelos do módulo fiscal - NF-e / NFC-e.
 """
+from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 from core.models import BaseModel, Loja
 from core.fields import EncryptedCharField
 from pessoas.models import Cliente, Fornecedor
+from produtos.models import Produto
 
 
 class ConfiguracaoFiscalLoja(BaseModel):
@@ -392,10 +394,15 @@ class NotaFiscalEntrada(BaseModel):
     """
     Nota Fiscal de Entrada (compra de fornecedor).
     
-    TODO: Importação de XML de NF-e de fornecedor
-    TODO: Validação de schema XML
-    TODO: Armazenamento seguro dos XMLs
+    Fluxo de status: RASCUNHO -> CONFIRMADA -> ESTOQUE_PARCIAL -> ESTOQUE_TOTAL
     """
+    STATUS_CHOICES = [
+        ('RASCUNHO', 'Rascunho'),
+        ('CONFIRMADA', 'Confirmada'),
+        ('ESTOQUE_PARCIAL', 'Estoque Parcial'),
+        ('ESTOQUE_TOTAL', 'Estoque Total'),
+    ]
+
     loja = models.ForeignKey(
         Loja,
         on_delete=models.PROTECT,
@@ -420,6 +427,27 @@ class NotaFiscalEntrada(BaseModel):
     xml_arquivo = models.TextField('XML da Nota', blank=True, null=True)
     data_emissao = models.DateField('Data de Emissão')
     data_entrada = models.DateField('Data de Entrada')
+
+    status = models.CharField(
+        'Status',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='RASCUNHO',
+    )
+    data_entrada_estoque = models.DateTimeField(
+        'Data da Entrada em Estoque',
+        null=True,
+        blank=True,
+        help_text='Quando foi dada entrada em estoque (última execução)',
+    )
+    usuario_entrada_estoque = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notas_entrada_estoque_processadas',
+        verbose_name='Usuário que deu entrada em estoque',
+    )
     
     class Meta:
         verbose_name = 'Nota Fiscal de Entrada'
@@ -434,4 +462,209 @@ class NotaFiscalEntrada(BaseModel):
     
     def __str__(self):
         return f"NF-e Entrada {self.numero}/{self.serie} - {self.fornecedor.razao_social}"
+
+
+class ItemNotaFiscalEntrada(BaseModel):
+    """
+    Item de uma Nota Fiscal de Entrada.
+
+    Status: NAO_VINCULADO, AGUARDANDO_CONFIRMACAO, VINCULADO, ESTOQUE_ENTRADO
+    """
+    STATUS_CHOICES = [
+        ('NAO_VINCULADO', 'Não vinculado'),
+        ('AGUARDANDO_CONFIRMACAO', 'Aguardando confirmação'),
+        ('VINCULADO', 'Vinculado'),
+        ('ESTOQUE_ENTRADO', 'Estoque entrado'),
+    ]
+
+    nota_fiscal = models.ForeignKey(
+        NotaFiscalEntrada,
+        on_delete=models.CASCADE,
+        related_name='itens',
+        verbose_name='Nota Fiscal',
+    )
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='itens_nota_entrada',
+        verbose_name='Produto',
+    )
+    numero_item = models.IntegerField('Número do Item')
+    codigo_produto_fornecedor = models.CharField('Código Produto Fornecedor', max_length=60, blank=True)
+    codigo_barras = models.CharField('Código de Barras (EAN)', max_length=50, blank=True)
+    ncm = models.CharField('NCM', max_length=10, blank=True)
+    descricao = models.CharField('Descrição', max_length=255)
+    quantidade = models.DecimalField(
+        'Quantidade',
+        max_digits=10,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal('0.001'))],
+    )
+    unidade_comercial = models.CharField('Unidade Comercial', max_length=10, default='UN')
+    preco_unitario = models.DecimalField(
+        'Preço Unitário',
+        max_digits=12,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal('0.0001'))],
+    )
+    valor_total = models.DecimalField(
+        'Valor Total',
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+    )
+    local_estoque = models.ForeignKey(
+        'estoque.LocalEstoque',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='itens_nota_entrada',
+        verbose_name='Local de Estoque (override)',
+        help_text='Se preenchido, sobrescreve o local padrão da nota',
+    )
+    status = models.CharField(
+        'Status',
+        max_length=25,
+        choices=STATUS_CHOICES,
+        default='NAO_VINCULADO',
+    )
+    produto_sugerido = models.ForeignKey(
+        Produto,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='itens_nota_entrada_sugestao',
+        verbose_name='Produto Sugerido (fuzzy match)',
+    )
+
+    class Meta:
+        verbose_name = 'Item da Nota Fiscal de Entrada'
+        verbose_name_plural = 'Itens da Nota Fiscal de Entrada'
+        ordering = ['nota_fiscal', 'numero_item']
+        unique_together = [['nota_fiscal', 'numero_item']]
+
+    def __str__(self):
+        return f"Item {self.numero_item} - {self.descricao[:50]}"
+
+
+class HistoricoEntradaEstoque(models.Model):
+    """
+    Log de cada execução de dar_entrada_estoque_nota.
+    Permite rastrear múltiplas execuções na mesma nota.
+    """
+    MOTIVO_PARCIAL_CHOICES = [
+        ('PARCIAL_SEM_VINCULO', 'Parcial - itens sem vínculo'),
+        ('PARCIAL_COM_ERRO', 'Parcial - erro técnico em algum item'),
+    ]
+
+    nota_fiscal = models.ForeignKey(
+        NotaFiscalEntrada,
+        on_delete=models.CASCADE,
+        related_name='historico_entrada_estoque',
+        verbose_name='Nota Fiscal',
+        db_index=True,
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='historicos_entrada_estoque',
+        verbose_name='Usuário',
+    )
+    data_processamento = models.DateTimeField('Data do Processamento', auto_now_add=True)
+    itens_processados = models.PositiveIntegerField('Itens Processados', default=0)
+    motivo_parcial = models.CharField(
+        'Motivo Parcial',
+        max_length=25,
+        choices=MOTIVO_PARCIAL_CHOICES,
+        null=True,
+        blank=True,
+    )
+    erros = models.JSONField(
+        'Erros',
+        default=list,
+        blank=True,
+        help_text='Lista de mensagens de erro por item',
+    )
+
+    class Meta:
+        verbose_name = 'Histórico de Entrada em Estoque'
+        verbose_name_plural = 'Históricos de Entrada em Estoque'
+        ordering = ['-data_processamento']
+        indexes = [
+            models.Index(fields=['nota_fiscal', '-data_processamento']),
+        ]
+
+    def __str__(self):
+        return f"Entrada {self.nota_fiscal.numero}/{self.nota_fiscal.serie} - {self.data_processamento}"
+
+
+class AlertaNotaFiscal(BaseModel):
+    """
+    Alerta de NF-e detectada via API SEFAZ-BA (notas emitidas no CNPJ da empresa).
+
+    Quando a SEFAZ-BA retorna notas onde nosso CNPJ é destinatário,
+    criamos alertas para o usuário importar ou registrar manualmente.
+    """
+    TIPO_CHOICES = [
+        ('ENTRADA', 'Nota de Entrada (destinatário)'),
+        ('SAIDA', 'Nota de Saída (emitente)'),
+    ]
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('IMPORTADA', 'Importada no sistema'),
+        ('IGNORADA', 'Ignorada'),
+    ]
+
+    loja = models.ForeignKey(
+        Loja,
+        on_delete=models.CASCADE,
+        related_name='alertas_nota_fiscal',
+        verbose_name='Loja',
+    )
+    tipo = models.CharField('Tipo', max_length=10, choices=TIPO_CHOICES, default='ENTRADA')
+    status = models.CharField('Status', max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+
+    # Dados da nota (da SEFAZ)
+    chave_acesso = models.CharField('Chave de Acesso', max_length=44, db_index=True)
+    numero = models.IntegerField('Número')
+    serie = models.CharField('Série', max_length=3)
+    valor_total = models.DecimalField(
+        'Valor Total',
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    data_emissao = models.DateField('Data de Emissão', null=True, blank=True)
+    cnpj_emitente = models.CharField('CNPJ Emitente', max_length=20, blank=True)
+    razao_social_emitente = models.CharField('Razão Social Emitente', max_length=255, blank=True)
+
+    # Vinculação após importação
+    nota_fiscal_entrada = models.ForeignKey(
+        NotaFiscalEntrada,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='alertas',
+        verbose_name='Nota Fiscal Importada',
+    )
+
+    data_consulta_sefaz = models.DateTimeField('Data da Consulta SEFAZ', auto_now_add=True)
+    mensagem = models.TextField('Mensagem', blank=True)
+
+    class Meta:
+        verbose_name = 'Alerta de Nota Fiscal'
+        verbose_name_plural = 'Alertas de Notas Fiscais'
+        ordering = ['-data_consulta_sefaz']
+        unique_together = [['loja', 'chave_acesso']]
+        indexes = [
+            models.Index(fields=['loja', 'status']),
+            models.Index(fields=['chave_acesso']),
+        ]
+
+    def __str__(self):
+        return f"Alerta NF-e {self.numero}/{self.serie} - {self.chave_acesso[:10]}..."
 
