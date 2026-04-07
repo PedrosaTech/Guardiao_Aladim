@@ -68,3 +68,7 @@ fornecedores_pirotecnia.csv
 /estoque/management/
 /pessoas/management/
 /produtos/management/commands/import_produtos_reais.py
+
+# Backups locais (conteudo sensivel); manter apenas backups/README.md
+backups/**
+!backups/README.md
