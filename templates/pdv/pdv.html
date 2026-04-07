@@ -143,6 +143,52 @@
         font-size: 18px;
     }
 
+    .search-results {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        background: #16213e;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        overflow: hidden;
+        z-index: 1200;
+        max-height: 320px;
+        overflow-y: auto;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        display: none;
+    }
+
+    .search-results.visible {
+        display: block;
+    }
+
+    .search-result-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid #0f3460;
+        cursor: pointer;
+    }
+
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+
+    .search-result-item:hover,
+    .search-result-item.active {
+        background: #0f3460;
+    }
+
+    .search-result-name {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .search-result-meta {
+        font-size: 11px;
+        color: #aaa;
+        margin-top: 2px;
+    }
+
     /* LISTA DE ITENS COM SCROLL */
     .items-area {
         flex: 1;
@@ -814,11 +860,10 @@
                     type="text" 
                     class="search-input" 
                     id="searchInput"
-                    placeholder="Digite o código do produto (apenas números)..."
+                    placeholder="Digite código, descrição ou código de barras..."
                     autofocus
-                    inputmode="numeric"
-                    pattern="[0-9]*"
                 >
+                <div class="search-results" id="searchResults"></div>
             </div>
         </div>
 
@@ -1156,10 +1201,14 @@
 <!-- ATALHOS -->
 <div class="shortcuts">
     <h4>⌨️ Atalhos</h4>
+    <div><span class="shortcut-key">F1</span> Dinheiro</div>
+    <div><span class="shortcut-key">F2</span> PIX</div>
+    <div><span class="shortcut-key">F3</span> Cartão Crédito</div>
+    <div><span class="shortcut-key">F4</span> Cartão Débito</div>
     <div><span class="shortcut-key">F9</span> Finalizar</div>
     <div><span class="shortcut-key">F8</span> Orçamento</div>
     <div><span class="shortcut-key">ESC</span> Limpar</div>
-    <div><span class="shortcut-key">F2</span> Buscar</div>
+    <div><span class="shortcut-key">F7</span> Buscar</div>
 </div>
 {% endblock %}
 
@@ -1175,6 +1224,10 @@
 
     // BUSCA DE PRODUTOS
     const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    let searchSuggestions = [];
+    let highlightedSuggestionIndex = -1;
+    let searchDebounceTimer = null;
     
     // Garantir que o campo está sempre habilitado para busca
     if (searchInput) {
@@ -1184,36 +1237,123 @@
         searchInput.removeAttribute('readonly');
     }
     
-    // Permitir apenas números no campo de busca
-    searchInput.addEventListener('input', function(e) {
-        // Remove tudo que não é número
-        e.target.value = e.target.value.replace(/\D/g, '');
-    });
-    
-    searchInput.addEventListener('keypress', async (e) => {
-        // Permite apenas números e teclas de controle
-        if (e.key !== 'Enter' && !/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
-            e.preventDefault();
+    function hideSearchResults() {
+        searchSuggestions = [];
+        highlightedSuggestionIndex = -1;
+        searchResults.classList.remove('visible');
+        searchResults.innerHTML = '';
+    }
+
+    function renderSearchResults() {
+        if (!searchSuggestions.length) {
+            hideSearchResults();
             return;
         }
-        
+
+        searchResults.innerHTML = searchSuggestions.map((item, index) => `
+            <div class="search-result-item ${index === highlightedSuggestionIndex ? 'active' : ''}" data-index="${index}">
+                <div class="search-result-name">${item.descricao}</div>
+                <div class="search-result-meta">
+                    Cód. interno: ${item.codigo_interno || '—'} | Barras: ${item.codigo_barras || '—'} | R$ ${parseFloat(item.preco_venda_sugerido).toFixed(2)}
+                </div>
+            </div>
+        `).join('');
+
+        searchResults.classList.add('visible');
+
+        // Mantém o item selecionado visível ao navegar com setas.
+        if (highlightedSuggestionIndex >= 0) {
+            const activeItem = searchResults.querySelector('.search-result-item.active');
+            if (activeItem) {
+                activeItem.scrollIntoView({ block: 'nearest' });
+            }
+        }
+    }
+
+    async function buscarSugestoes(term) {
+        try {
+            const response = await fetch(`/api/v1/pdv/produtos/?q=${encodeURIComponent(term)}`);
+            const data = await response.json();
+            searchSuggestions = (data && data.produtos) ? data.produtos : [];
+            highlightedSuggestionIndex = searchSuggestions.length ? 0 : -1;
+            renderSearchResults();
+        } catch (error) {
+            console.error('Erro ao buscar produto:', error);
+            hideSearchResults();
+        }
+    }
+
+    function selecionarSugestao(index) {
+        const item = searchSuggestions[index];
+        if (!item) return;
+        const codigoUsado = searchInput.value.trim() || item.codigo_barras || item.codigo_interno || '';
+        addToCart(item, codigoUsado);
+        searchInput.value = '';
+        hideSearchResults();
+        searchInput.focus();
+    }
+
+    searchInput.addEventListener('input', () => {
+        const term = searchInput.value.trim();
+        if (!term) {
+            hideSearchResults();
+            return;
+        }
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+            buscarSugestoes(term);
+        }, 120);
+    });
+
+    searchInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'ArrowDown') {
+            if (searchSuggestions.length) {
+                e.preventDefault();
+                highlightedSuggestionIndex = (highlightedSuggestionIndex + 1) % searchSuggestions.length;
+                renderSearchResults();
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowUp') {
+            if (searchSuggestions.length) {
+                e.preventDefault();
+                highlightedSuggestionIndex = (highlightedSuggestionIndex - 1 + searchSuggestions.length) % searchSuggestions.length;
+                renderSearchResults();
+            }
+            return;
+        }
+
+        if (e.key === 'Escape') {
+            hideSearchResults();
+            return;
+        }
+
         if (e.key === 'Enter') {
+            e.preventDefault();
             const term = searchInput.value.trim();
             if (!term) {
-                alert('Digite o código do produto!');
+                alert('Digite código, descrição ou código de barras do produto!');
                 return;
             }
 
+            if (searchSuggestions.length) {
+                const index = highlightedSuggestionIndex >= 0 ? highlightedSuggestionIndex : 0;
+                selecionarSugestao(index);
+                return;
+            }
+
+            // Fallback: busca direta quando não há lista renderizada.
             try {
                 const response = await fetch(`/api/v1/pdv/produtos/?q=${encodeURIComponent(term)}`);
                 const data = await response.json();
-
                 if (data.produtos && data.produtos.length > 0) {
                     addToCart(data.produtos[0], term);
                     searchInput.value = '';
+                    hideSearchResults();
                     searchInput.focus();
                 } else {
-                    alert('Produto não encontrado! Verifique o código digitado.');
+                    alert('Produto não encontrado! Verifique o termo digitado.');
                     searchInput.focus();
                     searchInput.select();
                 }
@@ -1222,6 +1362,21 @@
                 alert('Erro ao buscar produto');
                 searchInput.focus();
             }
+        }
+    });
+
+    searchResults.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.search-result-item');
+        if (!item) return;
+        const index = parseInt(item.dataset.index, 10);
+        if (Number.isFinite(index)) {
+            selecionarSugestao(index);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!searchResults.contains(e.target) && e.target !== searchInput) {
+            hideSearchResults();
         }
     });
 
@@ -1384,6 +1539,16 @@
             updateTotals();
         });
     });
+
+    function selecionarPagamentoPorTipo(tipo) {
+        const btn = document.querySelector(`.payment-btn[data-payment="${tipo}"]`);
+        if (!btn) return false;
+        document.querySelectorAll('.payment-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedPayment = btn.dataset.payment;
+        updateTotals();
+        return true;
+    }
 
     // VERIFICAR SE TEM PRODUTOS COM RESTRIÇÃO
     function temProdutosComRestricao() {
@@ -1563,6 +1728,8 @@
         }
         
         document.getElementById('confirmacaoModal').classList.add('active');
+        const btnConf = document.getElementById('confirmarVendaBtn');
+        if (btnConf) setTimeout(() => btnConf.focus(), 0);
     }
 
     // FECHAR MODAL DE CONFIRMAÇÃO
@@ -1631,6 +1798,8 @@
                 document.getElementById('modalMessage').textContent = mensagem;
                 document.getElementById('modalTotal').textContent = `R$ ${parseFloat(data.valor_total).toFixed(2).replace('.', ',')}`;
                 document.getElementById('successModal').classList.add('active');
+                const okSucesso = document.querySelector('#successModal .action-btn.primary');
+                if (okSucesso) setTimeout(() => okSucesso.focus(), 0);
                 fecharModalPirotecnia();
                 // Limpar valores de pagamento
                 valorRecebido = null;
@@ -1799,22 +1968,136 @@
         searchInput.focus();
     }
 
+    // Navegação Enter nos modais pós-F9 (campos em sequência; no último botão, Enter confirma).
+    // capture: true evita submit acidental do formulário pirotécnico ao pressionar Enter nos campos.
+    function isPdvModalFieldVisible(el) {
+        if (!el) return false;
+        if (el.type === 'hidden') return false;
+        let n = el;
+        while (n) {
+            const st = window.getComputedStyle(n);
+            if (st.display === 'none' || st.visibility === 'hidden') return false;
+            n = n.parentElement;
+        }
+        return true;
+    }
+
+    function buildPirotecniaEnterChain() {
+        const ids = ['cpfInput', 'nomeCompletoInput', 'dataNascimentoInput', 'telefoneInput', 'emailInput',
+            'tipoDocumentoInput', 'numeroDocumentoInput', 'orgaoEmissorInput', 'ufEmissorInput',
+            'aceiteTermoInput', 'confirmarCompradorBtn'];
+        return ids.map(id => document.getElementById(id)).filter(isPdvModalFieldVisible);
+    }
+
+    function buildFiscalEnterChain() {
+        const sim = document.getElementById('fiscal-sim');
+        const nao = document.getElementById('fiscal-nao');
+        const cpf = document.getElementById('cpf-cnpj-nota');
+        const btn = document.getElementById('btnConfirmarFiscal');
+        const chain = [sim, nao].filter(isPdvModalFieldVisible);
+        if (cpf && isPdvModalFieldVisible(cpf)) chain.push(cpf);
+        if (btn && isPdvModalFieldVisible(btn)) chain.push(btn);
+        return chain;
+    }
+
+    function buildDinheiroEnterChain() {
+        const inp = document.getElementById('valorRecebidoInput');
+        const btn = document.getElementById('confirmarPagamentoBtn');
+        const chain = [];
+        if (inp && isPdvModalFieldVisible(inp)) chain.push(inp);
+        if (btn && isPdvModalFieldVisible(btn) && !btn.disabled) chain.push(btn);
+        return chain;
+    }
+
+    function buildConfirmacaoEnterChain() {
+        const btn = document.getElementById('confirmarVendaBtn');
+        return btn && isPdvModalFieldVisible(btn) ? [btn] : [];
+    }
+
+    function buildSuccessEnterChain() {
+        const m = document.getElementById('successModal');
+        if (!m || !m.classList.contains('active')) return [];
+        const btn = m.querySelector('.action-btn.primary');
+        return btn && isPdvModalFieldVisible(btn) ? [btn] : [];
+    }
+
+    function tryPdvModalEnterNav(e) {
+        if (e.key !== 'Enter') return false;
+
+        let chain = [];
+        if (document.getElementById('pirotecniaModal')?.classList.contains('active')) {
+            chain = buildPirotecniaEnterChain();
+        } else if (document.getElementById('modalFiscal')?.classList.contains('active')) {
+            chain = buildFiscalEnterChain();
+        } else if (document.getElementById('pagamentoDinheiroModal')?.classList.contains('active')) {
+            chain = buildDinheiroEnterChain();
+        } else if (document.getElementById('confirmacaoModal')?.classList.contains('active')) {
+            chain = buildConfirmacaoEnterChain();
+        } else if (document.getElementById('successModal')?.classList.contains('active')) {
+            chain = buildSuccessEnterChain();
+        } else {
+            return false;
+        }
+
+        if (!chain.length) return false;
+
+        const active = document.activeElement;
+        let idx = chain.indexOf(active);
+
+        if (idx === -1) {
+            e.preventDefault();
+            chain[0].focus();
+            return true;
+        }
+
+        const last = chain[chain.length - 1];
+        const isLast = idx === chain.length - 1;
+
+        if (isLast) {
+            e.preventDefault();
+            if (last.tagName === 'BUTTON' && !last.disabled) last.click();
+            return true;
+        }
+
+        e.preventDefault();
+        chain[idx + 1].focus();
+        return true;
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (tryPdvModalEnterNav(e)) return;
+    }, true);
+
     // ATALHOS DE TECLADO
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'F9') {
+        const key = e.key;
+
+        if (key === 'F1') {
+            e.preventDefault();
+            selecionarPagamentoPorTipo('DINHEIRO');
+        } else if (key === 'F2') {
+            e.preventDefault();
+            selecionarPagamentoPorTipo('PIX');
+        } else if (key === 'F3') {
+            e.preventDefault();
+            selecionarPagamentoPorTipo('CARTAO_CREDITO');
+        } else if (key === 'F4') {
+            e.preventDefault();
+            selecionarPagamentoPorTipo('CARTAO_DEBITO');
+        } else if (key === 'F9') {
             e.preventDefault();
             if (!document.getElementById('finishBtn').disabled) {
                 document.getElementById('finishBtn').click();
             }
-        } else if (e.key === 'F8') {
+        } else if (key === 'F8') {
             e.preventDefault();
             if (!document.getElementById('budgetBtn').disabled) {
                 document.getElementById('budgetBtn').click();
             }
-        } else if (e.key === 'Escape') {
+        } else if (key === 'Escape') {
             e.preventDefault();
             document.getElementById('clearBtn').click();
-        } else if (e.key === 'F2') {
+        } else if (key === 'F7') {
             e.preventDefault();
             if (searchInput) {
                 searchInput.disabled = false;

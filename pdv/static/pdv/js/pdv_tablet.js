@@ -236,6 +236,9 @@
         toggleCpfCnpj();
         var m = document.getElementById('modalFiscal');
         if (m) m.classList.add('active');
+        if (sim) {
+            try { sim.focus(); } catch (err) { /* ignore */ }
+        }
     }
 
     function toggleCpfCnpj() {
