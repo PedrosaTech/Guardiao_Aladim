@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ guia.titulo }} - Guia{% endblock %}
+{% block page_title %}Guia de Utilizacao{% endblock %}
+
+{% block extra_css %}
+<style>
+    .container-guide {
+        max-width: 980px;
+        margin: 0 auto;
+    }
+    .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .guide-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,.08);
+        padding: 24px;
+    }
+    .guide-title {
+        margin: 0 0 8px 0;
+        color: #2c3e50;
+    }
+    .guide-meta {
+        color: #7f8c8d;
+        margin-bottom: 18px;
+        font-size: 13px;
+    }
+    .guide-content {
+        color: #2f3640;
+        line-height: 1.6;
+        font-size: 15px;
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-guide">
+    <a class="back-link" href="{% url 'core:lista_guias' %}">&larr; Voltar para central de guias</a>
+
+    <article class="guide-card">
+        <h1 class="guide-title">{{ guia.titulo }}</h1>
+        <div class="guide-meta">
+            {% if guia.categoria %}Categoria: {{ guia.categoria }}{% else %}Sem categoria{% endif %}
+        </div>
+
+        <div class="guide-content">{{ guia.conteudo|linebreaksbr }}</div>
+    </article>
+</div>
+{% endblock %}

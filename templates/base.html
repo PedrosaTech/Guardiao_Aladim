@@ -228,6 +228,10 @@
             
             <div class="menu-section">
                 <div class="menu-section-title">Sistema</div>
+                <a href="{% url 'core:lista_guias' %}" class="menu-item {% if 'cadastros/guias' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">📘</span>
+                    Guias de Utilização
+                </a>
                 <a href="/admin/" class="menu-item">
                     <span class="menu-item-icon">⚙️</span>
                     Admin Django

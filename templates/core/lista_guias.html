@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Guias de Utilizacao - Guardiao Aladin{% endblock %}
+{% block page_title %}Guias de Utilizacao{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .search-card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,.08);
+    }
+    .search-row {
+        display: flex;
+        gap: 10px;
+    }
+    .search-input {
+        flex: 1;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .btn {
+        border: none;
+        border-radius: 6px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+    .btn-light {
+        background: #ecf0f1;
+        color: #2c3e50;
+    }
+    .guide-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+    }
+    .guide-card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,.08);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .guide-title {
+        margin: 0;
+        font-size: 18px;
+        color: #2c3e50;
+    }
+    .guide-meta {
+        color: #7f8c8d;
+        font-size: 12px;
+    }
+    .guide-summary {
+        color: #555;
+        font-size: 14px;
+        min-height: 40px;
+    }
+    .empty {
+        background: white;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        color: #7f8c8d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2 style="margin:0 0 6px 0;">Central de Guias</h2>
+    <p style="margin:0;">Consulte tutoriais e instrucoes para operar o sistema.</p>
+</div>
+
+<form method="get" class="search-card">
+    <div class="search-row">
+        <input class="search-input" type="text" name="q" value="{{ busca }}" placeholder="Buscar por titulo, categoria ou conteudo..." />
+        <button class="btn btn-primary" type="submit">Buscar</button>
+        <a class="btn btn-light" href="{% url 'core:lista_guias' %}">Limpar</a>
+    </div>
+</form>
+
+{% if guias %}
+<div class="guide-grid">
+    {% for guia in guias %}
+    <article class="guide-card">
+        <h3 class="guide-title">{{ guia.titulo }}</h3>
+        <div class="guide-meta">
+            {% if guia.categoria %}Categoria: {{ guia.categoria }}{% else %}Sem categoria{% endif %}
+        </div>
+        <div class="guide-summary">{{ guia.resumo|default:"Sem resumo." }}</div>
+        <div>
+            <a class="btn btn-primary" href="{% url 'core:detalhe_guia' guia.slug %}">Abrir guia</a>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+    Nenhum guia encontrado para o filtro informado.
+</div>
+{% endif %}
+{% endblock %}

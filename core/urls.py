@@ -4,6 +4,7 @@ URLs do app core - cadastros administrativos (Empresa e Loja).
 from django.urls import path
 
 from . import cadastro_views
+from . import guia_views
 
 app_name = "core"
 
@@ -14,4 +15,6 @@ urlpatterns = [
     path("lojas/", cadastro_views.lista_lojas, name="lista_lojas"),
     path("lojas/nova/", cadastro_views.criar_loja, name="criar_loja"),
     path("lojas/<int:pk>/editar/", cadastro_views.editar_loja, name="editar_loja"),
+    path("guias/", guia_views.lista_guias, name="lista_guias"),
+    path("guias/<slug:slug>/", guia_views.detalhe_guia, name="detalhe_guia"),
 ]

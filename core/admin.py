@@ -2,7 +2,7 @@
 Admin para modelos do core.
 """
 from django.contrib import admin
-from .models import Empresa, Loja, AuditLog
+from .models import Empresa, Loja, AuditLog, GuiaUso
 
 
 @admin.register(Empresa)
@@ -65,6 +65,27 @@ class AuditLogAdmin(admin.ModelAdmin):
         }),
         ('Informações de Acesso', {
             'fields': ('ip', 'user_agent', 'data_hora')
+        }),
+    )
+
+
+@admin.register(GuiaUso)
+class GuiaUsoAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'categoria', 'ordem', 'publicado', 'is_active', 'updated_at']
+    list_filter = ['publicado', 'is_active', 'categoria']
+    search_fields = ['titulo', 'categoria', 'resumo', 'conteudo']
+    prepopulated_fields = {'slug': ('titulo',)}
+    readonly_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
+
+    fieldsets = (
+        ('Conteúdo', {
+            'fields': ('titulo', 'slug', 'categoria', 'resumo', 'conteudo')
+        }),
+        ('Publicação', {
+            'fields': ('ordem', 'publicado', 'is_active')
+        }),
+        ('Controle', {
+            'fields': ('created_at', 'updated_at', 'created_by', 'updated_by')
         }),
     )
 
