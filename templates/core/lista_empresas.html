@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% load admin_tags %}
+
+{% block title %}Empresas - Guardiao Aladin{% endblock %}
+{% block page_title %}Empresas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; transition: all 0.3s; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; color: white; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover { background: #e67e22; color: white; }
+    .btn-info { background: #17a2b8; color: white; }
+    .btn-info:hover { background: #138496; color: white; }
+    .filters { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .filter-group { display: flex; flex-direction: column; }
+    .filter-group label { margin-bottom: 5px; font-weight: 600; color: #555; font-size: 12px; text-transform: uppercase; }
+    .filter-group input, .filter-group select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+    .filter-actions { display: flex; align-items: flex-end; gap: 10px; }
+    .table-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #34495e; color: white; }
+    th { padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; font-weight: 600; }
+    td { padding: 12px; border-bottom: 1px solid #eee; color: #555; font-size: 14px; }
+    tbody tr:hover { background: #f8f9fa; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-ativa { background: #d4edda; color: #155724; }
+    .badge-inativa { background: #f8d7da; color: #721c24; }
+    .empty-state { text-align: center; padding: 60px 20px; background: white; border-radius: 8px; }
+    .empty-state h3 { color: #7f8c8d; margin-bottom: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Empresas Cadastradas</h2>
+    <div class="header-actions">
+        <a href="{% url 'core:criar_empresa' %}" class="btn btn-primary">+ Nova Empresa</a>
+    </div>
+</div>
+
+<div class="filters">
+    <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" id="search" placeholder="Nome fantasia ou razao social"
+               value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>Status</label>
+        <select id="ativas" onchange="filtrar()">
+            <option value="">Todas</option>
+            <option value="1" {% if filtros.ativas == '1' %}selected{% endif %}>Ativas</option>
+            <option value="0" {% if filtros.ativas == '0' %}selected{% endif %}>Inativas</option>
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+        <a href="{% url 'core:lista_empresas' %}" class="btn btn-info">Limpar</a>
+    </div>
+</div>
+
+{% if empresas %}
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>Nome Fantasia</th>
+                <th>Razao Social</th>
+                <th>CNPJ</th>
+                <th>E-mail</th>
+                <th>Cidade / UF</th>
+                <th>Status</th>
+                <th>Acoes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for empresa in empresas %}
+            <tr>
+                <td><strong>{{ empresa.nome_fantasia }}</strong></td>
+                <td>{{ empresa.razao_social }}</td>
+                <td>{{ empresa.cnpj|default:"-" }}</td>
+                <td>{{ empresa.email|default:"-" }}</td>
+                <td>
+                    {% if empresa.cidade %}{{ empresa.cidade }}{% if empresa.uf %}/{{ empresa.uf }}{% endif %}
+                    {% else %}-{% endif %}
+                </td>
+                <td>
+                    {% if empresa.is_active %}
+                    <span class="badge badge-ativa">Ativa</span>
+                    {% else %}
+                    <span class="badge badge-inativa">Inativa</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'core:editar_empresa' empresa.pk %}" class="btn btn-warning btn-sm">Editar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h3>Nenhuma empresa encontrada</h3>
+    <a href="{% url 'core:criar_empresa' %}" class="btn btn-primary" style="margin-top:15px;">+ Nova Empresa</a>
+</div>
+{% endif %}
+
+<script>
+function filtrar() {
+    const params = new URLSearchParams();
+    const search = document.getElementById('search').value;
+    const ativas = document.getElementById('ativas').value;
+    if (search) params.append('search', search);
+    if (ativas) params.append('ativas', ativas);
+    window.location.href = '{% url "core:lista_empresas" %}?' + params.toString();
+}
+</script>
+{% endblock %}

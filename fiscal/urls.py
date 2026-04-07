@@ -3,10 +3,16 @@ URLs do módulo fiscal.
 """
 from django.urls import path
 from . import views
+from . import config_loja_views
 
 app_name = 'fiscal'
 
 urlpatterns = [
+    # Configuração Fiscal de Loja (ADMINISTRADOR)
+    path('configuracao-fiscal/', config_loja_views.lista_config_fiscal, name='lista_config_fiscal'),
+    path('configuracao-fiscal/nova/', config_loja_views.criar_config_fiscal, name='criar_config_fiscal'),
+    path('configuracao-fiscal/<int:pk>/editar/', config_loja_views.editar_config_fiscal, name='editar_config_fiscal'),
+
     # Notas Fiscais de Saída
     path('notas-saida/', views.lista_notas_saida, name='lista_notas_saida'),
     path('notas-saida/detalhes/<int:nota_id>/', views.detalhes_nota_saida, name='detalhes_nota_saida'),

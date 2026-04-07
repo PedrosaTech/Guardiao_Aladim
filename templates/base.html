@@ -1,3 +1,4 @@
+{% load admin_tags %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -156,7 +157,8 @@
                     Pedidos
                 </a>
                 <a href="{% url 'orcamentos:orcamento_rapido' %}" class="menu-item {% if 'rapido' in request.path %}active{% endif %}">
-                    <i class="fas fa-bolt"></i> Orçamento Rápido
+                    <span class="menu-item-icon">⚡</span>
+                    Orçamento Rápido
                 </a>
                 <a href="{% url 'orcamentos:lista_orcamentos' %}" class="menu-item {% if 'orcamentos' in request.path and 'rapido' not in request.path %}active{% endif %}">
                     <span class="menu-item-icon">📋</span>
@@ -235,6 +237,24 @@
                     API REST
                 </a>
             </div>
+
+            {% if request.user|is_administrador %}
+            <div class="menu-section">
+                <div class="menu-section-title">Administração</div>
+                <a href="{% url 'core:lista_empresas' %}" class="menu-item {% if 'cadastros/empresas' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">🏢</span>
+                    Empresas
+                </a>
+                <a href="{% url 'core:lista_lojas' %}" class="menu-item {% if 'cadastros/lojas' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">🏪</span>
+                    Lojas
+                </a>
+                <a href="{% url 'fiscal:lista_config_fiscal' %}" class="menu-item {% if 'configuracao-fiscal' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">📑</span>
+                    Config. Fiscal
+                </a>
+            </div>
+            {% endif %}
         </nav>
     </aside>
 

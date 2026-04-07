@@ -1,0 +1,17 @@
+"""
+URLs do app core - cadastros administrativos (Empresa e Loja).
+"""
+from django.urls import path
+
+from . import cadastro_views
+
+app_name = "core"
+
+urlpatterns = [
+    path("empresas/", cadastro_views.lista_empresas, name="lista_empresas"),
+    path("empresas/nova/", cadastro_views.criar_empresa, name="criar_empresa"),
+    path("empresas/<int:pk>/editar/", cadastro_views.editar_empresa, name="editar_empresa"),
+    path("lojas/", cadastro_views.lista_lojas, name="lista_lojas"),
+    path("lojas/nova/", cadastro_views.criar_loja, name="criar_loja"),
+    path("lojas/<int:pk>/editar/", cadastro_views.editar_loja, name="editar_loja"),
+]

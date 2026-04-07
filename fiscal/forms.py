@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from datetime import date
 
-from .models import NotaFiscalEntrada, ItemNotaFiscalEntrada
+from .models import NotaFiscalEntrada, ItemNotaFiscalEntrada, ConfiguracaoFiscalLoja
 from pessoas.models import Fornecedor
 from core.models import Loja
 from produtos.models import Produto
@@ -209,3 +209,93 @@ ItemNotaFiscalEntradaFormSet = formset_factory(
     max_num=50,
     validate_max=True,
 )
+
+
+class ConfiguracaoFiscalLojaForm(forms.ModelForm):
+    """
+    Formulario de cadastro / edicao da configuracao fiscal de loja.
+    """
+
+    REGIME_CHOICES = [
+        ("", "Selecione o regime..."),
+        ("SIMPLES_NACIONAL", "Simples Nacional"),
+        ("LUCRO_PRESUMIDO", "Lucro Presumido"),
+        ("LUCRO_REAL", "Lucro Real"),
+    ]
+
+    regime_tributario = forms.ChoiceField(
+        label="Regime Tributario",
+        choices=REGIME_CHOICES,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    class Meta:
+        model = ConfiguracaoFiscalLoja
+        fields = [
+            "loja",
+            "cnpj",
+            "inscricao_estadual",
+            "regime_tributario",
+            "certificado_arquivo",
+            "senha_certificado",
+            "ambiente",
+            "serie_nfe",
+            "serie_nfce",
+            "proximo_numero_nfe",
+            "proximo_numero_nfce",
+            "usar_reforma_2026",
+            "aliquota_ibs_padrao_2026",
+            "aliquota_cbs_padrao_2026",
+        ]
+        widgets = {
+            "loja": forms.Select(attrs={"class": "form-control"}),
+            "cnpj": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "00.000.000/0000-00",
+                "maxlength": 18,
+            }),
+            "inscricao_estadual": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Inscricao Estadual",
+            }),
+            "certificado_arquivo": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "/caminho/no/servidor/certificado.pfx",
+            }),
+            "senha_certificado": forms.PasswordInput(
+                render_value=False,
+                attrs={"class": "form-control", "placeholder": "Senha do certificado A1"},
+            ),
+            "ambiente": forms.Select(attrs={"class": "form-control"}),
+            "serie_nfe": forms.TextInput(attrs={"class": "form-control", "maxlength": 3, "placeholder": "001"}),
+            "serie_nfce": forms.TextInput(attrs={"class": "form-control", "maxlength": 3, "placeholder": "001"}),
+            "proximo_numero_nfe": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "proximo_numero_nfce": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "usar_reforma_2026": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "aliquota_ibs_padrao_2026": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "aliquota_cbs_padrao_2026": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields["loja"].queryset = Loja.objects.filter(is_active=True)
+        else:
+            lojas_com_config = ConfiguracaoFiscalLoja.objects.values_list("loja_id", flat=True)
+            self.fields["loja"].queryset = (
+                Loja.objects.filter(is_active=True)
+                .exclude(id__in=lojas_com_config)
+                .order_by("empresa__nome_fantasia", "nome")
+            )
+        self.fields["loja"].empty_label = "Selecione a loja..."
+
+    def save(self, commit=True):
+        # Em edicao, senha vazia nao deve sobrescrever o valor existente.
+        instance = super().save(commit=False)
+        if instance.pk and "senha_certificado" in self.cleaned_data and not self.cleaned_data.get("senha_certificado"):
+            original_obj = ConfiguracaoFiscalLoja.objects.filter(pk=instance.pk).first()
+            original = original_obj.senha_certificado if original_obj else None
+            instance.senha_certificado = original
+        if commit:
+            instance.save()
+        return instance

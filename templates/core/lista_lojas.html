@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load admin_tags %}
+
+{% block title %}Lojas - Guardiao Aladin{% endblock %}
+{% block page_title %}Lojas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; transition: all 0.3s; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; color: white; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover { background: #e67e22; color: white; }
+    .btn-info { background: #17a2b8; color: white; }
+    .btn-info:hover { background: #138496; color: white; }
+    .filters { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .filter-group { display: flex; flex-direction: column; }
+    .filter-group label { margin-bottom: 5px; font-weight: 600; color: #555; font-size: 12px; text-transform: uppercase; }
+    .filter-group input, .filter-group select { padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+    .filter-actions { display: flex; align-items: flex-end; gap: 10px; }
+    .table-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #34495e; color: white; }
+    th { padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; font-weight: 600; }
+    td { padding: 12px; border-bottom: 1px solid #eee; color: #555; font-size: 14px; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-ativa { background: #d4edda; color: #155724; }
+    .badge-inativa { background: #f8d7da; color: #721c24; }
+    .badge-fiscal { background: #d1ecf1; color: #0c5460; }
+    .badge-sem-fiscal { background: #fff3cd; color: #856404; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Lojas Cadastradas</h2>
+    <div class="header-actions">
+        <a href="{% url 'core:criar_loja' %}" class="btn btn-primary">+ Nova Loja</a>
+    </div>
+</div>
+
+<div class="filters">
+    <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" id="search" placeholder="Nome da loja ou empresa"
+               value="{{ filtros.search }}" onkeypress="if(event.key==='Enter') filtrar()">
+    </div>
+    <div class="filter-group">
+        <label>Empresa</label>
+        <select id="empresa" onchange="filtrar()">
+            <option value="">Todas</option>
+            {% for empresa in empresas %}
+            <option value="{{ empresa.id }}" {% if filtros.empresa == empresa.id|stringformat:"s" %}selected{% endif %}>
+                {{ empresa.nome_fantasia }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Status</label>
+        <select id="ativas" onchange="filtrar()">
+            <option value="">Todas</option>
+            <option value="1" {% if filtros.ativas == '1' %}selected{% endif %}>Ativas</option>
+            <option value="0" {% if filtros.ativas == '0' %}selected{% endif %}>Inativas</option>
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" onclick="filtrar()">Filtrar</button>
+        <a href="{% url 'core:lista_lojas' %}" class="btn btn-info">Limpar</a>
+    </div>
+</div>
+
+{% if lojas %}
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>Loja</th>
+                <th>Empresa</th>
+                <th>CNPJ</th>
+                <th>E-mail</th>
+                <th>Cidade / UF</th>
+                <th>Config. Fiscal</th>
+                <th>Status</th>
+                <th>Acoes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loja in lojas %}
+            <tr>
+                <td><strong>{{ loja.nome }}</strong></td>
+                <td>{{ loja.empresa.nome_fantasia }}</td>
+                <td>{{ loja.cnpj|default:"-" }}</td>
+                <td>{{ loja.email|default:"-" }}</td>
+                <td>{% if loja.cidade %}{{ loja.cidade }}{% if loja.uf %}/{{ loja.uf }}{% endif %}{% else %}-{% endif %}</td>
+                <td>
+                    {% if loja.configuracao_fiscal %}
+                    <span class="badge badge-fiscal">Configurada</span>
+                    {% else %}
+                    <span class="badge badge-sem-fiscal">Sem config</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if loja.is_active %}
+                    <span class="badge badge-ativa">Ativa</span>
+                    {% else %}
+                    <span class="badge badge-inativa">Inativa</span>
+                    {% endif %}
+                </td>
+                <td style="white-space: nowrap;">
+                    <a href="{% url 'core:editar_loja' loja.pk %}" class="btn btn-warning btn-sm">Editar</a>
+                    {% if not loja.configuracao_fiscal %}
+                    <a href="{% url 'fiscal:criar_config_fiscal' %}?loja={{ loja.pk }}" class="btn btn-info btn-sm" style="margin-left:4px;">Config Fiscal</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<script>
+function filtrar() {
+    const params = new URLSearchParams();
+    const search = document.getElementById('search').value;
+    const empresa = document.getElementById('empresa').value;
+    const ativas = document.getElementById('ativas').value;
+    if (search) params.append('search', search);
+    if (empresa) params.append('empresa', empresa);
+    if (ativas) params.append('ativas', ativas);
+    window.location.href = '{% url "core:lista_lojas" %}?' + params.toString();
+}
+</script>
+{% endblock %}

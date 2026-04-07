@@ -87,6 +87,7 @@ urlpatterns = [
     path('vendas/', include('vendas.urls')),
     path('financeiro/', include('financeiro.urls')),
     path('pdv-movel/', include('pdv_movel.urls')),
+    path('cadastros/', include('core.urls')),
 ]
 
 # Servir arquivos de mídia em desenvolvimento

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load admin_tags %}
+
+{% block title %}{{ titulo }} - Guardiao Aladin{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .form-section { margin-bottom: 30px; }
+    .form-section h3 { color: #2c3e50; font-size: 15px; font-weight: 700; padding-bottom: 10px; border-bottom: 2px solid #3498db; margin-bottom: 20px; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+    .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+    .form-group label { margin-bottom: 6px; font-weight: 600; color: #2c3e50; font-size: 13px; }
+    .form-group .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; font-family: inherit; }
+    .form-check { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+    .errorlist { list-style: none; padding: 0; margin: 5px 0 0; }
+    .errorlist li { color: #e74c3c; font-size: 12px; }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+    .btn { padding: 10px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; font-weight: 600; }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-secondary { background: #95a5a6; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">{{ titulo }}</h2>
+    <a href="{% url 'core:lista_empresas' %}" class="btn btn-secondary">Voltar</a>
+</div>
+
+<div class="form-card">
+    <form method="POST" novalidate>
+        {% csrf_token %}
+
+        <div class="form-section">
+            <h3>Dados da Empresa</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Nome Fantasia</label>{{ form.nome_fantasia }}{{ form.nome_fantasia.errors }}</div>
+                <div class="form-group"><label>Razao Social</label>{{ form.razao_social }}{{ form.razao_social.errors }}</div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>CNPJ</label>{{ form.cnpj }}{{ form.cnpj.errors }}</div>
+                <div class="form-group"><label>Inscricao Estadual</label>{{ form.inscricao_estadual }}{{ form.inscricao_estadual.errors }}</div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Contato</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Telefone</label>{{ form.telefone }}{{ form.telefone.errors }}</div>
+                <div class="form-group"><label>E-mail</label>{{ form.email }}{{ form.email.errors }}</div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Endereco</h3>
+            <div class="form-row">
+                <div class="form-group" style="grid-column: span 2;"><label>Logradouro</label>{{ form.logradouro }}</div>
+                <div class="form-group"><label>Numero</label>{{ form.numero }}</div>
+                <div class="form-group"><label>Complemento</label>{{ form.complemento }}</div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Bairro</label>{{ form.bairro }}</div>
+                <div class="form-group"><label>Cidade</label>{{ form.cidade }}</div>
+                <div class="form-group"><label>UF</label>{{ form.uf }}</div>
+                <div class="form-group"><label>CEP</label>{{ form.cep }}</div>
+            </div>
+        </div>
+
+        <div class="form-check">
+            {{ form.is_active }}
+            <label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'core:lista_empresas' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">{{ acao }}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load admin_tags %}
+
+{% block title %}Configuracao Fiscal - Guardiao Aladin{% endblock %}
+{% block page_title %}Configuracao Fiscal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-actions { display: flex; gap: 10px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; transition: all 0.3s; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; color: white; }
+    .btn-warning { background: #f39c12; color: white; }
+    .btn-warning:hover { background: #e67e22; color: white; }
+    .table-card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #34495e; color: white; }
+    th { padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; font-weight: 600; }
+    td { padding: 12px; border-bottom: 1px solid #eee; color: #555; font-size: 14px; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+    .badge-homolog { background: #fff3cd; color: #856404; }
+    .badge-producao { background: #d4edda; color: #155724; }
+    .badge-reforma-on { background: #d1ecf1; color: #0c5460; }
+    .badge-reforma-off { background: #e2e3e5; color: #383d41; }
+    .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; padding: 14px 18px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="color: #2c3e50; margin: 0;">Configuracao Fiscal por Loja</h2>
+    <div class="header-actions">
+        <a href="{% url 'fiscal:criar_config_fiscal' %}" class="btn btn-primary">+ Nova Configuracao</a>
+    </div>
+</div>
+
+<div class="alert-info">
+    Configure uma entrada por loja antes de emitir NF-e ou NFC-e. Recomendado comecar em Homologacao.
+</div>
+
+{% if configs %}
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>Loja</th>
+                <th>Empresa</th>
+                <th>CNPJ</th>
+                <th>Regime</th>
+                <th>Ambiente</th>
+                <th>Serie NF-e</th>
+                <th>Prox. NF-e</th>
+                <th>Reforma 2026</th>
+                <th>Acoes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for config in configs %}
+            <tr>
+                <td><strong>{{ config.loja.nome }}</strong></td>
+                <td>{{ config.loja.empresa.nome_fantasia }}</td>
+                <td>{{ config.cnpj|default:"-" }}</td>
+                <td>{{ config.regime_tributario|default:"-" }}</td>
+                <td>
+                    {% if config.ambiente == 'PRODUCAO' %}
+                    <span class="badge badge-producao">Producao</span>
+                    {% else %}
+                    <span class="badge badge-homolog">Homologacao</span>
+                    {% endif %}
+                </td>
+                <td>{{ config.serie_nfe }}</td>
+                <td>{{ config.proximo_numero_nfe }}</td>
+                <td>
+                    {% if config.usar_reforma_2026 %}
+                    <span class="badge badge-reforma-on">Ativa</span>
+                    {% else %}
+                    <span class="badge badge-reforma-off">Desligada</span>
+                    {% endif %}
+                </td>
+                <td><a href="{% url 'fiscal:editar_config_fiscal' config.pk %}" class="btn btn-warning btn-sm">Editar</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
