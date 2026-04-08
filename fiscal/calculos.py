@@ -2,7 +2,42 @@
 Cálculos fiscais conforme normas SEFAZ-BA.
 """
 from decimal import Decimal
-from typing import Dict, List
+from types import SimpleNamespace
+from django.apps import apps as django_apps
+from typing import Dict, List, Optional
+
+
+def _parametros_fiscais_produto(item, produto) -> Optional[object]:
+    pedido = getattr(item, 'pedido', None)
+    loja = getattr(pedido, 'loja', None) if pedido else None
+    empresa = getattr(loja, 'empresa', None) if loja else None
+    if not empresa:
+        return None
+    ProdutoParametrosEmpresa = django_apps.get_model('produtos', 'ProdutoParametrosEmpresa')
+    return ProdutoParametrosEmpresa.objects.filter(
+        produto_id=produto.pk,
+        empresa_id=empresa.pk,
+        ativo_nessa_empresa=True,
+    ).first()
+
+
+_FISCAL_FALLBACK = SimpleNamespace(
+    csosn_cst='000',
+    aliquota_icms=Decimal('0.00'),
+    pis_cst='01',
+    aliquota_pis=Decimal('0.00'),
+    cofins_cst='01',
+    aliquota_cofins=Decimal('0.00'),
+    icms_st_cst=None,
+    aliquota_icms_st=None,
+    ipi_venda_cst='52',
+    aliquota_ipi_venda=Decimal('0.00'),
+    cclass_trib=None,
+    cst_ibs=None,
+    cst_cbs=None,
+    aliquota_ibs=Decimal('0.00'),
+    aliquota_cbs=Decimal('0.00'),
+)
 
 
 def calcular_impostos_item(item, regime_tributario=None, config_fiscal=None) -> Dict[str, Decimal]:
@@ -118,8 +153,9 @@ def calcular_impostos_item(item, regime_tributario=None, config_fiscal=None) -> 
     # ═══ CÁLCULO ICMS (só para produtos) ═══
     if tipo_item == 'PRODUTO':
         produto = item_fiscal
+        fiscal = _parametros_fiscais_produto(item, produto) or _FISCAL_FALLBACK
         # Verificar CST/CSOSN para determinar se calcula ICMS
-        csosn_cst = produto.csosn_cst or '000'
+        csosn_cst = fiscal.csosn_cst or '000'
     
         # CSOSN 102 = Simples Nacional - Tributado pelo Simples SEM permissão de crédito
         # Neste caso, NÃO calcula ICMS, PIS, COFINS separadamente (já estão no Simples)
@@ -137,46 +173,46 @@ def calcular_impostos_item(item, regime_tributario=None, config_fiscal=None) -> 
         elif csosn_cst == '00':  # Regime Normal - Tributado integralmente
             # Regime Normal: calcula ICMS normalmente
             base_icms = base_calculo
-            aliquota_icms = produto.aliquota_icms or Decimal('0.00')
+            aliquota_icms = fiscal.aliquota_icms or Decimal('0.00')
             valor_icms = base_icms * (aliquota_icms / Decimal('100.00'))
             
             # PIS e COFINS no regime normal
-            pis_cst = produto.pis_cst or '01'
+            pis_cst = fiscal.pis_cst or '01'
             if pis_cst == '01':
                 base_pis = base_calculo
-                aliquota_pis = produto.aliquota_pis or Decimal('0.00')
+                aliquota_pis = fiscal.aliquota_pis or Decimal('0.00')
                 valor_pis = base_pis * (aliquota_pis / Decimal('100.00'))
             
-            cofins_cst = produto.cofins_cst or '01'
+            cofins_cst = fiscal.cofins_cst or '01'
             if cofins_cst == '01':
                 base_cofins = base_calculo
-                aliquota_cofins = produto.aliquota_cofins or Decimal('0.00')
+                aliquota_cofins = fiscal.aliquota_cofins or Decimal('0.00')
                 valor_cofins = base_cofins * (aliquota_cofins / Decimal('100.00'))
         else:
             # Outros CSOSN/CST - pode variar conforme legislação
             # Por enquanto, apenas informa base se houver alíquota configurada
-            if produto.aliquota_icms and produto.aliquota_icms > 0:
+            if fiscal.aliquota_icms and fiscal.aliquota_icms > 0:
                 base_icms = base_calculo
                 # Não calcula valor se não for regime normal ou simples específico
                 valor_icms = Decimal('0.00')
         
         # ICMS-ST (Substituição Tributária)
         # ICMS-ST pode ser aplicado mesmo no Simples Nacional em casos específicos
-        if produto.icms_st_cst and produto.aliquota_icms_st:
+        if fiscal.icms_st_cst and fiscal.aliquota_icms_st:
             base_icms_st = base_calculo
-            aliquota_icms_st = produto.aliquota_icms_st or Decimal('0.00')
+            aliquota_icms_st = fiscal.aliquota_icms_st or Decimal('0.00')
             # Cálculo simplificado: base * alíquota ST
             # Em produção, pode ser necessário calcular MVA e outras variáveis
             valor_icms_st = base_icms_st * (aliquota_icms_st / Decimal('100.00'))
         
         # IPI (na venda)
-        ipi_venda_cst = produto.ipi_venda_cst or '52'
+        ipi_venda_cst = fiscal.ipi_venda_cst or '52'
         if ipi_venda_cst == '52':  # Saída Tributada com Alíquota Zero
             base_ipi = base_calculo
             valor_ipi = Decimal('0.00')  # Alíquota zero
         elif ipi_venda_cst in ['00', '01', '02', '03']:  # Outros CSTs tributados
             base_ipi = base_calculo
-            aliquota_ipi = produto.aliquota_ipi_venda or Decimal('0.00')
+            aliquota_ipi = fiscal.aliquota_ipi_venda or Decimal('0.00')
             valor_ipi = base_ipi * (aliquota_ipi / Decimal('100.00'))
         else:
             base_ipi = Decimal('0.00')
@@ -202,21 +238,26 @@ def calcular_impostos_item(item, regime_tributario=None, config_fiscal=None) -> 
         usar_reforma = config_fiscal.usar_reforma_2026
     
     if usar_reforma and item_fiscal:
+        # Parâmetros por empresa (produto) vs. serviço (mantém campos no próprio modelo)
+        if tipo_item == 'PRODUTO':
+            _fref = _parametros_fiscais_produto(item, item_fiscal) or _FISCAL_FALLBACK
+        else:
+            _fref = item_fiscal
         # Obter classificação tributária
-        cclass_trib = getattr(item_fiscal, 'cclass_trib', None)
-        cst_ibs = getattr(item_fiscal, 'cst_ibs', None)
-        cst_cbs = getattr(item_fiscal, 'cst_cbs', None)
+        cclass_trib = getattr(_fref, 'cclass_trib', None)
+        cst_ibs = getattr(_fref, 'cst_ibs', None)
+        cst_cbs = getattr(_fref, 'cst_cbs', None)
         
         # Obter alíquotas (prioridade: item > config > default)
-        if hasattr(item_fiscal, 'aliquota_ibs') and item_fiscal.aliquota_ibs:
-            aliquota_ibs = item_fiscal.aliquota_ibs
+        if hasattr(_fref, 'aliquota_ibs') and _fref.aliquota_ibs:
+            aliquota_ibs = _fref.aliquota_ibs
         elif config_fiscal and hasattr(config_fiscal, 'aliquota_ibs_padrao_2026'):
             aliquota_ibs = config_fiscal.aliquota_ibs_padrao_2026
         else:
             aliquota_ibs = Decimal('0.10')  # Default 2026
         
-        if hasattr(item_fiscal, 'aliquota_cbs') and item_fiscal.aliquota_cbs:
-            aliquota_cbs = item_fiscal.aliquota_cbs
+        if hasattr(_fref, 'aliquota_cbs') and _fref.aliquota_cbs:
+            aliquota_cbs = _fref.aliquota_cbs
         elif config_fiscal and hasattr(config_fiscal, 'aliquota_cbs_padrao_2026'):
             aliquota_cbs = config_fiscal.aliquota_cbs_padrao_2026
         else:

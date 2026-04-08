@@ -2,7 +2,14 @@
 Admin para modelos do core.
 """
 from django.contrib import admin
-from .models import Empresa, Loja, AuditLog, GuiaUso
+from .models import Empresa, Loja, AuditLog, GuiaUso, UsuarioEmpresa
+
+
+@admin.register(UsuarioEmpresa)
+class UsuarioEmpresaAdmin(admin.ModelAdmin):
+    list_display = ['user', 'empresa', 'perfil', 'empresa_padrao', 'is_active']
+    list_filter = ['perfil', 'empresa', 'is_active']
+    search_fields = ['user__username', 'empresa__nome_fantasia']
 
 
 @admin.register(Empresa)

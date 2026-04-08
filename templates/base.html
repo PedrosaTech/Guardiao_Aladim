@@ -200,6 +200,10 @@
                     <span class="menu-item-icon">📦</span>
                     Produtos
                 </a>
+                <a href="{% url 'estoque:transferencia_interempresa' %}" class="menu-item {% if 'estoque/transferencia' in request.path %}active{% endif %}">
+                    <span class="menu-item-icon">🔀</span>
+                    Transf. entre CNPJs
+                </a>
                 <a href="{% url 'pessoas:lista_clientes' %}" class="menu-item {% if 'clientes' in request.path %}active{% endif %}">
                     <span class="menu-item-icon">👥</span>
                     Clientes
@@ -270,6 +274,18 @@
             </div>
             <div class="topbar-user">
                 {% if user.is_authenticated %}
+                {% if usuario_empresas_ativas %}
+                <form method="post" action="{% url 'core:trocar_empresa' %}" id="form-trocar-empresa" style="display: flex; align-items: center; gap: 8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <label for="select-empresa-ativa" style="font-size: 12px; color: #7f8c8d;">Empresa</label>
+                    <select name="empresa_id" id="select-empresa-ativa" onchange="document.getElementById('form-trocar-empresa').submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #bdc3c7; font-size: 13px; max-width: 220px;">
+                        {% for ue in usuario_empresas_ativas %}
+                        <option value="{{ ue.empresa.id }}" {% if empresa_ativa_session_id == ue.empresa.id %}selected{% endif %}>{{ ue.empresa.nome_fantasia }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
                 <div class="topbar-user-info">
                     <div class="topbar-user-name">{{ user.get_full_name|default:user.username }}</div>
                     <div class="topbar-user-role">

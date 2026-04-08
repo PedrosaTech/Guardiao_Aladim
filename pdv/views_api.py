@@ -14,8 +14,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.exceptions import ValidationError
 
+from core.tenant import get_empresa_ativa
 from produtos.models import Produto
-from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
+from produtos.utils import (
+    buscar_produto_por_codigo,
+    buscar_produtos_por_termo,
+    preco_venda_para_json,
+)
 from vendas.models import PedidoVenda
 from vendas.services import efetivar_pedido_tablet
 from .models import CaixaSessao, Pagamento
@@ -46,15 +51,17 @@ def buscar_produtos_pdv(request):
     if not termo:
         return Response({'erro': 'Parâmetro q é obrigatório'}, status=400)
 
+    empresa_ctx = get_empresa_ativa(request)
+
     if termo.isdigit() and len(termo) >= 8:
-        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=None)
+        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=empresa_ctx)
         if produto:
             resultados = [{
                 'id': produto.id,
                 'codigo_interno': produto.codigo_interno,
                 'codigo_barras': termo,
                 'descricao': produto.descricao,
-                'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                'preco_venda_sugerido': preco_venda_para_json(produto, empresa_ctx),
                 'unidade_comercial': produto.unidade_comercial,
                 'possui_restricao_exercito': produto.possui_restricao_exercito,
                 'classe_risco': produto.classe_risco,
@@ -64,7 +71,7 @@ def buscar_produtos_pdv(request):
             }]
             return Response({'produtos': resultados})
 
-    produtos = buscar_produtos_por_termo(termo, empresa=None, limit=20)
+    produtos = buscar_produtos_por_termo(termo, empresa=empresa_ctx, limit=20)
     resultados = []
     for p in produtos:
         resultados.append({
@@ -72,7 +79,7 @@ def buscar_produtos_pdv(request):
             'codigo_interno': p.codigo_interno,
             'codigo_barras': p.codigo_barras or '',
             'descricao': p.descricao,
-            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'preco_venda_sugerido': preco_venda_para_json(p, empresa_ctx),
             'unidade_comercial': p.unidade_comercial,
             'possui_restricao_exercito': p.possui_restricao_exercito,
             'classe_risco': p.classe_risco,

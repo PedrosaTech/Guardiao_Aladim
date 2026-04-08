@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Transferência entre CNPJs - Guardião Aladin{% endblock %}
+{% block page_title %}Transferência entre CNPJs{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px;">
+    <p style="color: #555; margin-bottom: 20px;">
+        Saída de estoque na empresa ativa (<strong>{{ empresa_ativa.nome_fantasia }}</strong>)
+        e entrada na empresa de destino (outra empresa à qual você tem acesso).
+        Sem NF-e — uso interno / movimentação física.
+    </p>
+
+    {% if not empresas_destino.exists %}
+    <div style="padding: 16px; background: #fff3cd; border-radius: 8px; color: #856404;">
+        Você não possui outra empresa vinculada ao usuário além da atual.
+        Cadastre o vínculo em <strong>Usuário × Empresa</strong> para habilitar o destino.
+    </div>
+    {% elif not produtos %}
+    <div style="padding: 16px; background: #fff3cd; border-radius: 8px; color: #856404;">
+        Não há produtos ativos na empresa atual que também estejam ativos em alguma empresa de destino.
+    </div>
+    {% else %}
+
+    <form method="post" style="background: white; padding: 24px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
+        {% csrf_token %}
+        <div style="margin-bottom: 16px;">
+            <label for="produto_id" style="display: block; font-weight: 600; margin-bottom: 6px;">Produto</label>
+            <select name="produto_id" id="produto_id" required class="form-control" style="width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px;">
+                <option value="">Selecione…</option>
+                {% for p in produtos %}
+                <option value="{{ p.id }}">{{ p.codigo_interno }} — {{ p.descricao|truncatechars:60 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label for="local_origem_id" style="display: block; font-weight: 600; margin-bottom: 6px;">Local de origem ({{ empresa_ativa.nome_fantasia }})</label>
+            <select name="local_origem_id" id="local_origem_id" required style="width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px;">
+                <option value="">Selecione…</option>
+                {% for loc in locais_origem %}
+                <option value="{{ loc.id }}">{{ loc.loja.nome }} — {{ loc.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label for="local_destino_id" style="display: block; font-weight: 600; margin-bottom: 6px;">Local de destino (outra empresa)</label>
+            <select name="local_destino_id" id="local_destino_id" required style="width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px;">
+                <option value="">Selecione…</option>
+                {% for loc in locais_destino %}
+                <option value="{{ loc.id }}">{{ loc.loja.empresa.nome_fantasia }} / {{ loc.loja.nome }} — {{ loc.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div>
+                <label for="quantidade" style="display: block; font-weight: 600; margin-bottom: 6px;">Quantidade</label>
+                <input type="text" name="quantidade" id="quantidade" required placeholder="ex: 30"
+                    style="width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px;">
+            </div>
+            <div>
+                <label for="custo_unitario" style="display: block; font-weight: 600; margin-bottom: 6px;">Custo unitário (destino)</label>
+                <input type="text" name="custo_unitario" id="custo_unitario" required placeholder="ex: 10.00"
+                    style="width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px;">
+            </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label for="observacao" style="display: block; font-weight: 600; margin-bottom: 6px;">Observação (opcional)</label>
+            <textarea name="observacao" id="observacao" rows="3"
+                style="width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 6px;"></textarea>
+        </div>
+        <button type="submit" style="background: #27ae60; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 15px;">
+            Confirmar transferência
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

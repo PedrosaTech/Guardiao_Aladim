@@ -100,18 +100,21 @@ class RelatorioVendasForm(forms.Form):
         if not (self.data.get('data_fim') or self.initial.get('data_fim')):
             self.fields['data_fim'].initial = timezone.now().date()
 
-        produtos = Produto.objects.filter(is_active=True)
         categorias = CategoriaProduto.objects.filter(is_active=True)
-        lojas = Loja.objects.filter(is_active=True)
-        clientes = Cliente.objects.filter(is_active=True)
-        fornecedores = Fornecedor.objects.filter(is_active=True)
-
         if empresa:
-            produtos = produtos.filter(empresa=empresa)
-            categorias = categorias.filter(empresa=empresa)
-            lojas = lojas.filter(empresa=empresa)
-            clientes = clientes.filter(empresa=empresa)
-            fornecedores = fornecedores.filter(empresa=empresa)
+            produtos = Produto.objects.filter(
+                is_active=True,
+                parametros_por_empresa__empresa=empresa,
+                parametros_por_empresa__ativo_nessa_empresa=True,
+            ).distinct()
+            lojas = Loja.objects.filter(empresa=empresa, is_active=True)
+            clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
+            fornecedores = Fornecedor.objects.filter(empresa=empresa, is_active=True)
+        else:
+            produtos = Produto.objects.none()
+            lojas = Loja.objects.none()
+            clientes = Cliente.objects.none()
+            fornecedores = Fornecedor.objects.none()
 
         self.fields['produto'].queryset = produtos.order_by('descricao')
         self.fields['categoria'].queryset = categorias.order_by('nome')

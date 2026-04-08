@@ -29,7 +29,9 @@
                         <p class="mb-2"><strong>Código de barras:</strong> {{ produto.codigo_barras|default:"—" }}</p>
                         <p class="mb-2"><strong>Descrição:</strong><br>{{ produto.descricao }}</p>
                         <p class="mb-2"><strong>Categoria:</strong> {{ produto.categoria.nome }}</p>
-                        <p class="mb-2"><strong>Preço:</strong> R$ {{ produto.preco_venda_sugerido|floatformat:2 }}</p>
+                        {% if preco_ref %}
+                        <p class="mb-2"><strong>Preço (referência):</strong> R$ {{ preco_ref|floatformat:2 }}</p>
+                        {% endif %}
                         <p class="mb-0">
                             <strong>Classe de risco:</strong>
                             <span class="badge bg-warning text-dark">{{ produto.classe_risco }}</span>

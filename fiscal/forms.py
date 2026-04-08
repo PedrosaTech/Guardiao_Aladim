@@ -62,9 +62,14 @@ class NotaFiscalEntradaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
-        self.fields['loja'].queryset = Loja.objects.filter(is_active=True)
-        self.fields['fornecedor'].queryset = Fornecedor.objects.filter(is_active=True)
+        if empresa:
+            self.fields['loja'].queryset = Loja.objects.filter(empresa=empresa, is_active=True)
+            self.fields['fornecedor'].queryset = Fornecedor.objects.filter(empresa=empresa, is_active=True)
+        else:
+            self.fields['loja'].queryset = Loja.objects.none()
+            self.fields['fornecedor'].queryset = Fornecedor.objects.none()
 
         if not self.instance.pk:
             self.fields['data_entrada'].initial = date.today()
@@ -277,15 +282,19 @@ class ConfiguracaoFiscalLojaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop("empresa", None)
         super().__init__(*args, **kwargs)
+        loja_base = Loja.objects.filter(is_active=True)
+        if empresa:
+            loja_base = loja_base.filter(empresa=empresa)
+        else:
+            loja_base = Loja.objects.none()
         if self.instance and self.instance.pk:
-            self.fields["loja"].queryset = Loja.objects.filter(is_active=True)
+            self.fields["loja"].queryset = loja_base
         else:
             lojas_com_config = ConfiguracaoFiscalLoja.objects.values_list("loja_id", flat=True)
             self.fields["loja"].queryset = (
-                Loja.objects.filter(is_active=True)
-                .exclude(id__in=lojas_com_config)
-                .order_by("empresa__nome_fantasia", "nome")
+                loja_base.exclude(id__in=lojas_com_config).order_by("empresa__nome_fantasia", "nome")
             )
         self.fields["loja"].empty_label = "Selecione a loja..."
 

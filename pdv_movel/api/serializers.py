@@ -9,6 +9,7 @@ from datetime import timedelta
 from rest_framework import serializers
 
 from produtos.models import Produto
+from produtos.utils import preco_venda_para_json
 from vendas.models import PedidoVenda, ItemPedidoVenda, CondicaoPagamento
 from pessoas.models import Cliente
 from estoque.models import EstoqueAtual
@@ -28,6 +29,7 @@ def _estoque_produto_loja(produto, loja):
 
 class ProdutoListSerializer(serializers.ModelSerializer):
     estoque_disponivel = serializers.SerializerMethodField()
+    preco_venda_sugerido = serializers.SerializerMethodField()
     categoria_nome = serializers.CharField(
         source="categoria.nome",
         read_only=True,
@@ -48,19 +50,27 @@ class ProdutoListSerializer(serializers.ModelSerializer):
             "is_active",
         ]
 
-    def get_estoque_disponivel(self, obj):
+    def _loja_context(self):
         request = self.context.get("request")
-        loja = None
         if request and hasattr(request.user, "atendente_pdv"):
             try:
-                loja = request.user.atendente_pdv.loja
+                return request.user.atendente_pdv.loja
             except Exception:
                 pass
-        return _estoque_produto_loja(obj, loja)
+        return None
+
+    def get_estoque_disponivel(self, obj):
+        return _estoque_produto_loja(obj, self._loja_context())
+
+    def get_preco_venda_sugerido(self, obj):
+        loja = self._loja_context()
+        emp = loja.empresa if loja else None
+        return preco_venda_para_json(obj, emp)
 
 
 class ProdutoDetalheSerializer(serializers.ModelSerializer):
     estoque_disponivel = serializers.SerializerMethodField()
+    preco_venda_sugerido = serializers.SerializerMethodField()
     categoria_nome = serializers.CharField(
         source="categoria.nome",
         read_only=True,
@@ -83,15 +93,22 @@ class ProdutoDetalheSerializer(serializers.ModelSerializer):
             "is_active",
         ]
 
-    def get_estoque_disponivel(self, obj):
+    def _loja_context(self):
         request = self.context.get("request")
-        loja = None
         if request and hasattr(request.user, "atendente_pdv"):
             try:
-                loja = request.user.atendente_pdv.loja
+                return request.user.atendente_pdv.loja
             except Exception:
                 pass
-        return _estoque_produto_loja(obj, loja)
+        return None
+
+    def get_estoque_disponivel(self, obj):
+        return _estoque_produto_loja(obj, self._loja_context())
+
+    def get_preco_venda_sugerido(self, obj):
+        loja = self._loja_context()
+        emp = loja.empresa if loja else None
+        return preco_venda_para_json(obj, emp)
 
 
 class ItemPedidoSerializer(serializers.ModelSerializer):

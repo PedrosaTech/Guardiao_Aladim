@@ -36,8 +36,8 @@ class TotaisRelatorio:
     total_produtos: int
 
 
-def queryset_base_vendas():
-    return (
+def queryset_base_vendas(empresa=None):
+    qs = (
         ItemPedidoVenda.objects.filter(
             is_active=True,
             pedido__is_active=True,
@@ -53,6 +53,9 @@ def queryset_base_vendas():
             "codigo_alternativo_usado__fornecedor",
         )
     )
+    if empresa is not None:
+        qs = qs.filter(pedido__loja__empresa=empresa)
+    return qs
 
 
 def aplicar_filtros(qs, form):

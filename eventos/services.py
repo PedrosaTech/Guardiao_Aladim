@@ -49,18 +49,16 @@ def faturar_evento_com_nfe(evento: EventoVenda, usuario=None) -> NotaFiscalSaida
         logger.warning(f"Nota fiscal já existe para evento {evento.id}: {nota_existente.numero}")
         return nota_existente
     
-    # Busca configuração fiscal da loja
     from fiscal.models import ConfiguracaoFiscalLoja
-    config_fiscal = getattr(evento.loja, 'configuracao_fiscal', None)
-    
-    if not config_fiscal:
-        raise ValueError(f"Loja {evento.loja.nome} não possui configuração fiscal")
-    
-    # Gera número da nota
-    numero_nfe = config_fiscal.proximo_numero_nfe
-    config_fiscal.proximo_numero_nfe += 1
-    config_fiscal.save(update_fields=['proximo_numero_nfe', 'updated_at'])
-    
+    from fiscal.numeracao import reservar_numero_nfe
+
+    try:
+        numero_nfe, serie_nfe = reservar_numero_nfe(evento.loja)
+    except ConfiguracaoFiscalLoja.DoesNotExist:
+        raise ValueError(
+            f"Loja {evento.loja.nome} não possui configuração fiscal"
+        ) from None
+
     # Cria a nota fiscal
     nota_fiscal = NotaFiscalSaida.objects.create(
         loja=evento.loja,
@@ -69,7 +67,7 @@ def faturar_evento_com_nfe(evento: EventoVenda, usuario=None) -> NotaFiscalSaida
         evento=evento,
         tipo_documento='NFE',
         numero=numero_nfe,
-        serie=config_fiscal.serie_nfe,
+        serie=serie_nfe,
         valor_total=pedido.valor_total,
         status='RASCUNHO',  # TODO: Mudar para EM_PROCESSAMENTO quando integrar com SEFAZ
         created_by=usuario,

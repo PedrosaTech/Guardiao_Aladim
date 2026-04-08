@@ -187,19 +187,26 @@
                             <span class="info-label">Categoria</span>
                             <span class="info-value">{{ produto.categoria.nome }}</span>
                         </div>
-                        <div class="info-item">
-                            <span class="info-label">Empresa</span>
-                            <span class="info-value">{{ produto.empresa.nome_fantasia }}</span>
-                        </div>
-                        {% if produto.loja %}
-                        <div class="info-item">
-                            <span class="info-label">Loja</span>
-                            <span class="info-value">{{ produto.loja.nome }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="info-item">
-                            <span class="info-label">Preço de Venda Sugerido</span>
-                            <span class="info-value">R$ {{ produto.preco_venda_sugerido|floatformat:2 }}</span>
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">Preço / parâmetros por empresa</span>
+                            {% if parametros_empresa %}
+                            <table class="table table-sm mt-2 mb-0">
+                                <thead><tr><th>Empresa</th><th>Ativo</th><th>Preço</th><th>CFOP</th><th>CSOSN</th></tr></thead>
+                                <tbody>
+                                {% for par in parametros_empresa %}
+                                <tr>
+                                    <td>{{ par.empresa.nome_fantasia }}</td>
+                                    <td>{% if par.ativo_nessa_empresa %}Sim{% else %}Não{% endif %}</td>
+                                    <td>R$ {{ par.preco_venda|floatformat:2 }}</td>
+                                    <td>{{ par.cfop_venda_dentro_uf }}</td>
+                                    <td>{{ par.csosn_cst }}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <span class="info-value text-muted">Nenhum parâmetro cadastrado.</span>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -284,35 +291,14 @@
                         </div>
                         {% endif %}
                         <div class="info-item">
-                            <span class="info-label">CFOP Venda Dentro UF</span>
-                            <span class="info-value">{{ produto.cfop_venda_dentro_uf|default:"-" }}</span>
-                        </div>
-                        {% if produto.cfop_venda_fora_uf %}
-                        <div class="info-item">
-                            <span class="info-label">CFOP Venda Fora UF</span>
-                            <span class="info-value">{{ produto.cfop_venda_fora_uf }}</span>
-                        </div>
-                        {% endif %}
-                        <div class="info-item">
                             <span class="info-label">Unidade Comercial</span>
                             <span class="info-value">{{ produto.unidade_comercial|default:"UN" }}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">CSOSN/CST ICMS</span>
-                            <span class="info-value">{{ produto.csosn_cst|default:"-" }}</span>
+                            <span class="info-label">Origem</span>
+                            <span class="info-value">{{ produto.origem|default:"0" }}</span>
                         </div>
-                        <div class="info-item">
-                            <span class="info-label">Alíquota ICMS</span>
-                            <span class="info-value">{{ produto.aliquota_icms|floatformat:2 }}%</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Alíquota PIS</span>
-                            <span class="info-value">{{ produto.aliquota_pis|floatformat:2 }}%</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Alíquota COFINS</span>
-                            <span class="info-value">{{ produto.aliquota_cofins|floatformat:2 }}%</span>
-                        </div>
+                        <p class="text-muted small mt-2 mb-0" style="grid-column: 1 / -1;">CFOP, CSOSN e demais tributos por empresa estão na tabela acima.</p>
                     </div>
                 </div>
 

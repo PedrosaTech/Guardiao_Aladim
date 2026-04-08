@@ -42,7 +42,7 @@ def criar_pedido_venda_balcao(
                 {
                     'produto_id': int,
                     'quantidade': Decimal ou str,
-                    'preco_unitario': Decimal ou str (opcional, usa preco_venda_sugerido se não informado),
+                    'preco_unitario': Decimal ou str (opcional, usa preco_venda da empresa se não informado),
                     'desconto': Decimal ou str (opcional, default 0)
                 },
                 ...
@@ -121,7 +121,19 @@ def criar_pedido_venda_balcao(
         
         produto = Produto.objects.get(id=produto_id, is_active=True)
         quantidade = Decimal(str(item_data.get('quantidade', 1)))
-        preco_unitario = Decimal(str(item_data.get('preco_unitario', produto.preco_venda_sugerido)))
+        if 'preco_unitario' in item_data:
+            preco_unitario = Decimal(str(item_data['preco_unitario']))
+        else:
+            params = produto.parametros_por_empresa.filter(
+                empresa=loja.empresa,
+                ativo_nessa_empresa=True,
+            ).first()
+            if not params:
+                raise ValueError(
+                    f"Produto {produto.codigo_interno} não possui parâmetros "
+                    f"cadastrados para a empresa {loja.empresa.nome_fantasia}."
+                )
+            preco_unitario = params.preco_venda
         desconto = Decimal(str(item_data.get('desconto', 0)))
 
         # Rastreio: código usado / alternativo / multiplicador (opcional)

@@ -31,17 +31,28 @@
         </div>
     </div>
 
+    {% if empresas_com_params.count %}
+    <div class="mb-3">
+        <label class="form-label">Editar parâmetros da empresa</label>
+        <select class="form-select" style="max-width:320px" onchange="if(this.value) location='?empresa_id='+this.value">
+            {% for e in empresas_com_params %}
+            <option value="{{ e.id }}" {% if param_empresa and e.id == param_empresa.id %}selected{% endif %}>{{ e.nome_fantasia }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
     <form method="post" class="mb-4">
         {% csrf_token %}
+        <input type="hidden" name="param_empresa_id" value="{{ param_empresa.id|default:'' }}">
+
         <div class="card mb-3">
-            <div class="card-header"><strong>Informações básicas</strong></div>
+            <div class="card-header"><strong>Informações básicas (catálogo global)</strong></div>
             <div class="card-body">
                 <div class="row g-2">
-                    <div class="col-md-2">{{ form.empresa.label_tag }}{{ form.empresa }}{{ form.empresa.errors }}</div>
-                    <div class="col-md-2">{{ form.loja.label_tag }}{{ form.loja }}{{ form.loja.errors }}</div>
-                    <div class="col-md-2">{{ form.categoria.label_tag }}{{ form.categoria }}{{ form.categoria.errors }}</div>
-                    <div class="col-md-2">{{ form.codigo_interno.label_tag }}{{ form.codigo_interno }}{{ form.codigo_interno.errors }}</div>
-                    <div class="col-md-2">{{ form.codigo_barras.label_tag }}{{ form.codigo_barras }}{{ form.codigo_barras.errors }}</div>
+                    <div class="col-md-3">{{ form.categoria.label_tag }}{{ form.categoria }}{{ form.categoria.errors }}</div>
+                    <div class="col-md-3">{{ form.codigo_interno.label_tag }}{{ form.codigo_interno }}{{ form.codigo_interno.errors }}</div>
+                    <div class="col-md-3">{{ form.codigo_barras.label_tag }}{{ form.codigo_barras }}{{ form.codigo_barras.errors }}</div>
                 </div>
                 <div class="mt-2">{{ form.descricao.label_tag }}{{ form.descricao }}{{ form.descricao.errors }}</div>
             </div>
@@ -61,56 +72,65 @@
             </div>
         </div>
         <div class="card mb-3">
-            <div class="card-header"><strong>Fiscais (NCM, CFOP)</strong></div>
+            <div class="card-header"><strong>NCM / CEST / Unidade (globais)</strong></div>
             <div class="card-body">
                 <div class="row g-2">
                     <div class="col-md-2">{{ form.ncm.label_tag }}{{ form.ncm }}{{ form.ncm.errors }}</div>
                     <div class="col-md-2">{{ form.cest.label_tag }}{{ form.cest }}</div>
-                    <div class="col-md-2">{{ form.cfop_venda_dentro_uf.label_tag }}{{ form.cfop_venda_dentro_uf }}{{ form.cfop_venda_dentro_uf.errors }}</div>
-                    <div class="col-md-2">{{ form.cfop_venda_fora_uf.label_tag }}{{ form.cfop_venda_fora_uf }}</div>
                     <div class="col-md-1">{{ form.unidade_comercial.label_tag }}{{ form.unidade_comercial }}</div>
                     <div class="col-md-1">{{ form.origem.label_tag }}{{ form.origem }}</div>
                 </div>
             </div>
         </div>
-        <div class="card mb-3">
-            <div class="card-header"><strong>Tributos</strong></div>
+
+        <div class="card mb-3 border-primary">
+            <div class="card-header bg-primary text-white"><strong>Parâmetros por empresa</strong>
+                <small class="d-block opacity-75">Preço e tributos aplicáveis à empresa selecionada acima.</small>
+            </div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-md-2">{{ form.csosn_cst.label_tag }}{{ form.csosn_cst }}</div>
-                    <div class="col-md-2">{{ form.aliquota_icms.label_tag }}{{ form.aliquota_icms }}</div>
-                    <div class="col-md-2">{{ form.icms_st_cst.label_tag }}{{ form.icms_st_cst }}</div>
-                    <div class="col-md-2">{{ form.aliquota_icms_st.label_tag }}{{ form.aliquota_icms_st }}</div>
-                    <div class="col-md-2">{{ form.pis_cst.label_tag }}{{ form.pis_cst }}</div>
-                    <div class="col-md-2">{{ form.aliquota_pis.label_tag }}{{ form.aliquota_pis }}</div>
-                    <div class="col-md-2">{{ form.cofins_cst.label_tag }}{{ form.cofins_cst }}</div>
-                    <div class="col-md-2">{{ form.aliquota_cofins.label_tag }}{{ form.aliquota_cofins }}</div>
-                    <div class="col-md-2">{{ form.ipi_venda_cst.label_tag }}{{ form.ipi_venda_cst }}</div>
-                    <div class="col-md-2">{{ form.aliquota_ipi_venda.label_tag }}{{ form.aliquota_ipi_venda }}</div>
-                    <div class="col-md-2">{{ form.ipi_compra_cst.label_tag }}{{ form.ipi_compra_cst }}</div>
-                    <div class="col-md-2">{{ form.aliquota_ipi_compra.label_tag }}{{ form.aliquota_ipi_compra }}</div>
+                {% if not param_empresa %}
+                <p class="text-warning">Nenhuma empresa disponível para parâmetros. Cadastre via admin ou crie o produto informando a empresa.</p>
+                {% else %}
+                <div class="row g-2 mb-2">
+                    <div class="col-md-4">{{ params_form.empresa.label_tag }}{{ params_form.empresa }}{{ params_form.empresa.errors }}</div>
+                    <div class="col-md-2 form-check mt-4">{{ params_form.ativo_nessa_empresa }}{{ params_form.ativo_nessa_empresa.label_tag }}</div>
                 </div>
+                <div class="row g-2">
+                    <div class="col-md-2">{{ params_form.cfop_venda_dentro_uf.label_tag }}{{ params_form.cfop_venda_dentro_uf }}</div>
+                    <div class="col-md-2">{{ params_form.cfop_venda_fora_uf.label_tag }}{{ params_form.cfop_venda_fora_uf }}</div>
+                    <div class="col-md-2">{{ params_form.preco_venda.label_tag }}{{ params_form.preco_venda }}{{ params_form.preco_venda.errors }}</div>
+                </div>
+                <hr>
+                <div class="row g-2">
+                    <div class="col-md-2">{{ params_form.csosn_cst.label_tag }}{{ params_form.csosn_cst }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_icms.label_tag }}{{ params_form.aliquota_icms }}</div>
+                    <div class="col-md-2">{{ params_form.icms_st_cst.label_tag }}{{ params_form.icms_st_cst }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_icms_st.label_tag }}{{ params_form.aliquota_icms_st }}</div>
+                    <div class="col-md-2">{{ params_form.pis_cst.label_tag }}{{ params_form.pis_cst }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_pis.label_tag }}{{ params_form.aliquota_pis }}</div>
+                    <div class="col-md-2">{{ params_form.cofins_cst.label_tag }}{{ params_form.cofins_cst }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_cofins.label_tag }}{{ params_form.aliquota_cofins }}</div>
+                    <div class="col-md-2">{{ params_form.ipi_venda_cst.label_tag }}{{ params_form.ipi_venda_cst }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_ipi_venda.label_tag }}{{ params_form.aliquota_ipi_venda }}</div>
+                    <div class="col-md-2">{{ params_form.ipi_compra_cst.label_tag }}{{ params_form.ipi_compra_cst }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_ipi_compra.label_tag }}{{ params_form.aliquota_ipi_compra }}</div>
+                </div>
+                <hr>
+                <div class="row g-2">
+                    <div class="col-md-2">{{ params_form.cclass_trib.label_tag }}{{ params_form.cclass_trib }}</div>
+                    <div class="col-md-2">{{ params_form.cst_ibs.label_tag }}{{ params_form.cst_ibs }}</div>
+                    <div class="col-md-2">{{ params_form.cst_cbs.label_tag }}{{ params_form.cst_cbs }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_ibs.label_tag }}{{ params_form.aliquota_ibs }}</div>
+                    <div class="col-md-2">{{ params_form.aliquota_cbs.label_tag }}{{ params_form.aliquota_cbs }}</div>
+                </div>
+                {% endif %}
             </div>
         </div>
+
         <div class="card mb-3">
-            <div class="card-header"><strong>Reforma 2026</strong></div>
+            <div class="card-header"><strong>Observações (globais)</strong></div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-md-2">{{ form.cclass_trib.label_tag }}{{ form.cclass_trib }}</div>
-                    <div class="col-md-2">{{ form.cst_ibs.label_tag }}{{ form.cst_ibs }}</div>
-                    <div class="col-md-2">{{ form.cst_cbs.label_tag }}{{ form.cst_cbs }}</div>
-                    <div class="col-md-2">{{ form.aliquota_ibs.label_tag }}{{ form.aliquota_ibs }}</div>
-                    <div class="col-md-2">{{ form.aliquota_cbs.label_tag }}{{ form.aliquota_cbs }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="card mb-3">
-            <div class="card-header"><strong>Comercial</strong></div>
-            <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-md-4">{{ form.preco_venda_sugerido.label_tag }}{{ form.preco_venda_sugerido }}{{ form.preco_venda_sugerido.errors }}</div>
-                    <div class="col-md-8">{{ form.observacoes.label_tag }}{{ form.observacoes }}</div>
-                </div>
+                {{ form.observacoes.label_tag }}{{ form.observacoes }}{{ form.observacoes.errors }}
             </div>
         </div>
         <div class="d-flex gap-2">

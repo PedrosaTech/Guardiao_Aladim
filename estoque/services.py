@@ -5,6 +5,7 @@ from django.db import transaction
 from decimal import Decimal
 from typing import List
 from .models import EstoqueAtual, MovimentoEstoque, LocalEstoque
+from .valoracao import atualizar_quantidade_total
 from produtos.models import Produto
 import logging
 
@@ -20,7 +21,8 @@ def realizar_movimento_estoque(
     local_destino: LocalEstoque = None,
     referencia: str = None,
     observacao: str = None,
-    usuario=None
+    usuario=None,
+    custo_unitario: Decimal = None,
 ) -> MovimentoEstoque:
     """
     Realiza uma movimentação de estoque de forma atômica.
@@ -34,7 +36,8 @@ def realizar_movimento_estoque(
         referencia: Referência externa (ID de pedido, nota, etc.)
         observacao: Observação sobre o movimento
         usuario: Usuário que realizou o movimento
-    
+        custo_unitario: Custo unitário (recomendado em ENTRADA para custo médio)
+
     Returns:
         MovimentoEstoque criado
     
@@ -50,7 +53,13 @@ def realizar_movimento_estoque(
         raise ValueError("TRANSFERENCIA requer local_origem e local_destino")
     if tipo_movimento == 'AJUSTE' and not local_destino:
         raise ValueError("AJUSTE requer local_destino")
-    
+    if tipo_movimento == 'TRANSFERENCIA':
+        if local_origem.loja.empresa_id != local_destino.loja.empresa_id:
+            raise ValueError(
+                "Transferência entre CNPJs distintos não use o tipo TRANSFERENCIA; "
+                "use a rotina de transferência interempresa (saída + entrada separadas)."
+            )
+
     # Verifica quantidade disponível para saída/transferência
     if tipo_movimento in ['SAIDA', 'TRANSFERENCIA']:
         estoque_origem, _ = EstoqueAtual.objects.get_or_create(
@@ -71,6 +80,7 @@ def realizar_movimento_estoque(
         local_destino=local_destino,
         tipo_movimento=tipo_movimento,
         quantidade=quantidade,
+        custo_unitario=custo_unitario,
         referencia=referencia,
         observacao=observacao,
         created_by=usuario,
@@ -110,7 +120,17 @@ def realizar_movimento_estoque(
         )
         estoque_destino.quantidade = quantidade
         estoque_destino.save(update_fields=['quantidade', 'updated_at'])
-    
+
+    if tipo_movimento == 'ENTRADA':
+        if custo_unitario is None or custo_unitario <= 0:
+            atualizar_quantidade_total(local_destino.loja.empresa, produto)
+    elif tipo_movimento == 'SAIDA':
+        atualizar_quantidade_total(local_origem.loja.empresa, produto)
+    elif tipo_movimento == 'TRANSFERENCIA':
+        atualizar_quantidade_total(local_origem.loja.empresa, produto)
+    elif tipo_movimento == 'AJUSTE':
+        atualizar_quantidade_total(local_destino.loja.empresa, produto)
+
     # TODO: Log de segurança para produtos com restrição de Exército
     if produto.possui_restricao_exercito:
         logger.warning(

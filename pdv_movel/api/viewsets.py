@@ -69,7 +69,12 @@ class ProdutosPDVViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         return (
-            Produto.objects.filter(is_active=True, empresa=empresa)
+            Produto.objects.filter(
+                is_active=True,
+                parametros_por_empresa__empresa=empresa,
+                parametros_por_empresa__ativo_nessa_empresa=True,
+            )
+            .distinct()
             .select_related("categoria")
             .order_by("descricao")[:100]
         )

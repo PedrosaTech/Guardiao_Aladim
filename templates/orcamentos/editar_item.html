@@ -110,7 +110,9 @@
         <h3>{{ item.produto.descricao }}</h3>
         <p><strong>Código:</strong> {{ item.produto.codigo_interno|default:"-" }}</p>
         <p><strong>Classe de Risco:</strong> {{ item.classe_risco }}{% if item.subclasse_risco %} - {{ item.subclasse_risco }}{% endif %}</p>
-        <p><strong>Preço Sugerido:</strong> R$ {{ item.produto.preco_venda_sugerido|floatformat:2 }}</p>
+        {% if preco_sugerido %}
+        <p><strong>Preço Sugerido:</strong> R$ {{ preco_sugerido|floatformat:2 }}</p>
+        {% endif %}
     </div>
 
     <form method="POST" id="form-item">

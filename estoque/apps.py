@@ -6,3 +6,6 @@ class EstoqueConfig(AppConfig):
     name = 'estoque'
     verbose_name = 'Estoque'
 
+    def ready(self):
+        import estoque.signals  # noqa: F401
+

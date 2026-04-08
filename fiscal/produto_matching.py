@@ -58,10 +58,11 @@ def encontrar_ou_sugerir_produto(
         if codigo_fornecedor.isdigit() and len(codigo_fornecedor) in [8, 12, 13, 14]:
             alt = CodigoBarrasAlternativo.objects.filter(
                 codigo_barras=codigo_fornecedor,
-                produto__empresa=empresa,
+                produto__parametros_por_empresa__empresa=empresa,
+                produto__parametros_por_empresa__ativo_nessa_empresa=True,
                 produto__is_active=True,
                 is_active=True,
-            ).select_related('produto').first()
+            ).select_related('produto').distinct().first()
             if alt:
                 return alt.produto, None, 'VINCULADO'
 
@@ -87,10 +88,11 @@ def _buscar_fuzzy_ncm_descricao(ncm: str, descricao: str, empresa) -> Optional[P
         return None
 
     qs = Produto.objects.filter(
-        empresa=empresa,
         is_active=True,
+        parametros_por_empresa__empresa=empresa,
+        parametros_por_empresa__ativo_nessa_empresa=True,
         ncm__icontains=ncm_limpo[:4],
-    )
+    ).distinct()
 
     # Descrição: primeiras palavras em comum
     palavras = [p for p in descricao[:50].split() if len(p) > 2][:3]

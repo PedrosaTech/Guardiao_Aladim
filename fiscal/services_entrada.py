@@ -94,6 +94,7 @@ def dar_entrada_estoque_nota(
                 referencia=f"NFE_{nota.id}",
                 observacao=f"NF-e Entrada {nota.numero}/{nota.serie} - Item {item.numero_item}",
                 usuario=usuario,
+                custo_unitario=item.preco_unitario,
             )
             item.status = 'ESTOQUE_ENTRADO'
             item.save(update_fields=['status', 'updated_at'])

@@ -10,6 +10,26 @@ if TYPE_CHECKING:
     from produtos.models import CodigoBarrasAlternativo, Empresa, Produto
 
 
+def preco_venda_para_empresa(produto: 'Produto', empresa: Optional['Empresa']):
+    """Retorna Decimal do preço na empresa ou None se não houver parâmetros ativos."""
+    if not empresa:
+        return None
+    params = produto.parametros_por_empresa.filter(
+        empresa=empresa,
+        ativo_nessa_empresa=True,
+    ).first()
+    return params.preco_venda if params else None
+
+
+def preco_venda_para_json(produto: 'Produto', empresa: Optional['Empresa'] = None) -> str:
+    """Preço para APIs JSON (string); com empresa None usa o primeiro parâmetro ativo."""
+    p = preco_venda_para_empresa(produto, empresa)
+    if p is not None:
+        return str(p)
+    anyp = produto.parametros_por_empresa.filter(ativo_nessa_empresa=True).order_by('pk').first()
+    return str(anyp.preco_venda) if anyp else ''
+
+
 def buscar_produto_por_codigo(
     codigo_barras: str,
     empresa: Optional['Empresa'] = None,
@@ -33,7 +53,10 @@ def buscar_produto_por_codigo(
 
     qs = Produto.objects.filter(is_active=True)
     if empresa:
-        qs = qs.filter(empresa=empresa)
+        qs = qs.filter(
+            parametros_por_empresa__empresa=empresa,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        ).distinct()
 
     produto = qs.filter(codigo_barras=codigo_barras).first()
     if produto:
@@ -45,7 +68,10 @@ def buscar_produto_por_codigo(
         is_active=True,
     ).select_related('produto')
     if empresa:
-        alt_qs = alt_qs.filter(produto__empresa=empresa)
+        alt_qs = alt_qs.filter(
+            produto__parametros_por_empresa__empresa=empresa,
+            produto__parametros_por_empresa__ativo_nessa_empresa=True,
+        ).distinct()
     alt = alt_qs.first()
 
     if alt:
@@ -83,7 +109,10 @@ def buscar_produtos_por_termo(
 
     qs = Produto.objects.filter(is_active=True)
     if empresa:
-        qs = qs.filter(empresa=empresa)
+        qs = qs.filter(
+            parametros_por_empresa__empresa=empresa,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        ).distinct()
 
     produtos = qs.filter(
         Q(descricao__icontains=termo)
@@ -97,7 +126,10 @@ def buscar_produtos_por_termo(
         is_active=True,
     )
     if empresa:
-        ids_alt = ids_alt.filter(produto__empresa=empresa)
+        ids_alt = ids_alt.filter(
+            produto__parametros_por_empresa__empresa=empresa,
+            produto__parametros_por_empresa__ativo_nessa_empresa=True,
+        )
     ids_alt = ids_alt.values_list('produto_id', flat=True)
 
     produtos = produtos | qs.filter(id__in=ids_alt)

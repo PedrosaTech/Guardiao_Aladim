@@ -1,7 +1,9 @@
 """
 Views do app core.
 """
-from django.shortcuts import render
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncDate, ExtractMonth
@@ -11,16 +13,22 @@ import json
 from rest_framework import viewsets
 from .models import Empresa, Loja
 from .serializers import EmpresaSerializer, LojaSerializer
+from .tenant import get_empresa_ativa, get_empresas_permitidas, set_empresa_ativa
 
 
 class EmpresaViewSet(viewsets.ModelViewSet):
-    queryset = Empresa.objects.filter(is_active=True)
     serializer_class = EmpresaSerializer
+
+    def get_queryset(self):
+        return get_empresas_permitidas(self.request).filter(is_active=True)
 
 
 class LojaViewSet(viewsets.ModelViewSet):
-    queryset = Loja.objects.filter(is_active=True)
     serializer_class = LojaSerializer
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return Loja.objects.filter(empresa=empresa, is_active=True)
 
 
 @login_required
@@ -28,15 +36,26 @@ def dashboard(request):
     """
     Dashboard principal do sistema.
     """
-    # Estatísticas de Produtos
+    empresa = get_empresa_ativa(request)
+
+    # Estatísticas de Produtos (catálogo global — somente ativos na empresa)
     from produtos.models import Produto
-    total_produtos = Produto.objects.filter(is_active=True).count()
-    produtos_restricao = Produto.objects.filter(is_active=True, possui_restricao_exercito=True).count()
+    produtos_empresa = Produto.objects.filter(
+        is_active=True,
+        parametros_por_empresa__empresa=empresa,
+        parametros_por_empresa__ativo_nessa_empresa=True,
+    ).distinct()
+    total_produtos = produtos_empresa.count()
+    produtos_restricao = produtos_empresa.filter(possui_restricao_exercito=True).count()
     
     # Estatísticas de Estoque
     from estoque.models import EstoqueAtual
-    total_locais = EstoqueAtual.objects.filter(is_active=True).values('local_estoque').distinct().count()
-    produtos_com_estoque = EstoqueAtual.objects.filter(is_active=True, quantidade__gt=0).values('produto').distinct().count()
+    estoque_empresa = EstoqueAtual.objects.filter(
+        is_active=True,
+        local_estoque__loja__empresa=empresa,
+    )
+    total_locais = estoque_empresa.values('local_estoque').distinct().count()
+    produtos_com_estoque = estoque_empresa.filter(quantidade__gt=0).values('produto').distinct().count()
     
     # Estatísticas de Vendas
     from vendas.models import PedidoVenda
@@ -45,16 +64,19 @@ def dashboard(request):
     
     pedidos_hoje = PedidoVenda.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         data_emissao__date=hoje
     ).count()
     
     pedidos_mes = PedidoVenda.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         data_emissao__date__gte=mes_atual
     ).count()
     
     valor_mes = PedidoVenda.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         data_emissao__date__gte=mes_atual,
         status__in=['ABERTO', 'FATURADO']
     ).aggregate(Sum('valor_total'))['valor_total__sum'] or 0
@@ -63,11 +85,13 @@ def dashboard(request):
     from eventos.models import EventoVenda
     eventos_abertos = EventoVenda.objects.filter(
         is_active=True,
+        empresa=empresa,
         status__in=['RASCUNHO', 'PROPOSTA_ENVIADA', 'APROVADO', 'EM_EXECUCAO']
     ).count()
     
     eventos_mes = EventoVenda.objects.filter(
         is_active=True,
+        empresa=empresa,
         data_evento__gte=mes_atual
     ).count()
     
@@ -75,12 +99,14 @@ def dashboard(request):
     from fiscal.models import NotaFiscalSaida
     notas_autorizadas_mes = NotaFiscalSaida.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         status='AUTORIZADA',
         data_emissao__date__gte=mes_atual if timezone.now().date() >= mes_atual else None
     ).count()
     
     valor_nfe_mes = NotaFiscalSaida.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         status='AUTORIZADA',
         data_emissao__date__gte=mes_atual if timezone.now().date() >= mes_atual else None
     ).aggregate(Sum('valor_total'))['valor_total__sum'] or 0
@@ -88,12 +114,14 @@ def dashboard(request):
     # Pedidos pendentes
     pedidos_pendentes = PedidoVenda.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         status__in=['ORCAMENTO', 'ABERTO']
     ).count()
     
     # Notas em rascunho
     notas_rascunho = NotaFiscalSaida.objects.filter(
         is_active=True,
+        loja__empresa=empresa,
         status='RASCUNHO'
     ).count()
     
@@ -105,6 +133,7 @@ def dashboard(request):
     try:
         vendas_7_dias = PedidoVenda.objects.filter(
             is_active=True,
+            loja__empresa=empresa,
             data_emissao__date__gte=sete_dias_atras,
             data_emissao__date__lte=hoje,
             status__in=['ABERTO', 'FATURADO']
@@ -139,6 +168,7 @@ def dashboard(request):
     try:
         faturamento_mensal = PedidoVenda.objects.filter(
             is_active=True,
+            loja__empresa=empresa,
             data_emissao__date__gte=primeiro_dia_ano,
             status__in=['ABERTO', 'FATURADO']
         ).annotate(
@@ -168,6 +198,7 @@ def dashboard(request):
         produtos_top = ItemPedidoVenda.objects.filter(
             is_active=True,
             pedido__is_active=True,
+            pedido__loja__empresa=empresa,
             pedido__data_emissao__date__gte=trinta_dias_atras,
             pedido__status__in=['ABERTO', 'FATURADO']
         ).values(
@@ -193,6 +224,7 @@ def dashboard(request):
         
         estoque_por_local = EstoqueAtual.objects.filter(
             is_active=True,
+            local_estoque__loja__empresa=empresa,
             quantidade__gt=0
         ).values(
             'local_estoque__nome'
@@ -232,3 +264,26 @@ def dashboard(request):
     }
     
     return render(request, 'core/dashboard.html', context)
+
+
+def handler403(request, exception=None):
+    """Resposta amigável para PermissionDenied (ex.: sem empresa na sessão)."""
+    return render(request, '403.html', status=403)
+
+
+@login_required
+def trocar_empresa(request):
+    """
+    Recebe POST com empresa_id, valida e grava na sessão.
+    Redireciona para next ou para a raiz.
+    """
+    if request.method == 'POST':
+        empresa_id = request.POST.get('empresa_id')
+        try:
+            empresa_id = int(empresa_id)
+            set_empresa_ativa(request, empresa_id)
+            messages.success(request, 'Empresa alterada com sucesso.')
+        except (ValueError, TypeError, PermissionDenied):
+            messages.error(request, 'Empresa inválida ou sem permissão.')
+        return redirect(request.POST.get('next') or '/')
+    return redirect('/')

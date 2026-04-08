@@ -20,11 +20,15 @@ from .serializers import EventoVendaSerializer
 from .services import faturar_evento_com_nfe
 from vendas.models import PedidoVenda, ItemPedidoVenda, CondicaoPagamento
 from produtos.models import Produto
+from core.tenant import get_empresa_ativa
 
 
 class EventoVendaViewSet(viewsets.ModelViewSet):
-    queryset = EventoVenda.objects.filter(is_active=True)
     serializer_class = EventoVendaSerializer
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return EventoVenda.objects.filter(is_active=True, empresa=empresa)
     
     @action(detail=True, methods=['post'])
     def gerar_pedido(self, request, pk=None):
@@ -32,15 +36,17 @@ class EventoVendaViewSet(viewsets.ModelViewSet):
         evento = self.get_object()
         condicao_pagamento_id = request.data.get('condicao_pagamento_id')
         cliente_id = request.data.get('cliente_id')
-        
         condicao_pagamento = None
         if condicao_pagamento_id:
-            condicao_pagamento = CondicaoPagamento.objects.get(id=condicao_pagamento_id)
-        
+            condicao_pagamento = CondicaoPagamento.objects.get(
+                id=condicao_pagamento_id,
+                empresa=evento.loja.empresa,
+            )
+
         cliente = None
         if cliente_id:
             from pessoas.models import Cliente
-            cliente = Cliente.objects.get(id=cliente_id)
+            cliente = Cliente.objects.get(id=cliente_id, empresa=evento.empresa)
         
         pedido = evento.gerar_pedido_evento(condicao_pagamento=condicao_pagamento, cliente=cliente)
         
@@ -55,7 +61,10 @@ def proposta_evento(request, evento_id):
     """
     Tela de proposta de evento para montar itens do pedido.
     """
-    evento = get_object_or_404(EventoVenda, id=evento_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    evento = get_object_or_404(
+        EventoVenda, id=evento_id, empresa=empresa, is_active=True
+    )
     
     # Gera ou busca o pedido do evento
     pedido = evento.pedido
@@ -82,8 +91,11 @@ def adicionar_item_proposta(request, evento_id):
     Adiciona item à proposta do evento.
     """
     try:
-        evento = get_object_or_404(EventoVenda, id=evento_id, is_active=True)
-        
+        empresa = get_empresa_ativa(request)
+        evento = get_object_or_404(
+            EventoVenda, id=evento_id, empresa=empresa, is_active=True
+        )
+
         # Garante que existe pedido
         if not evento.pedido:
             evento.gerar_pedido_evento()
@@ -97,11 +109,22 @@ def adicionar_item_proposta(request, evento_id):
         if not produto_id:
             return JsonResponse({'erro': 'Produto não informado'}, status=400)
         
-        produto = Produto.objects.get(id=produto_id, is_active=True)
+        produto = get_object_or_404(
+            Produto,
+            id=produto_id,
+            is_active=True,
+            parametros_por_empresa__empresa=empresa,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        )
         
-        # Se preço não informado, usa o preço sugerido
+        # Se preço não informado, usa o preço nos parâmetros da empresa do pedido
         if preco_unitario == 0:
-            preco_unitario = produto.preco_venda_sugerido
+            from produtos.utils import preco_venda_para_empresa
+            emp = evento.pedido.loja.empresa if evento.pedido and evento.pedido.loja else None
+            pv = preco_venda_para_empresa(produto, emp)
+            if pv is None:
+                return JsonResponse({'erro': 'Produto sem preço para a empresa do evento.'}, status=400)
+            preco_unitario = pv
         
         # Cria ou atualiza item
         item, created = ItemPedidoVenda.objects.get_or_create(
@@ -140,7 +163,10 @@ def remover_item_proposta(request, evento_id, item_id):
     Remove item da proposta do evento.
     """
     try:
-        evento = get_object_or_404(EventoVenda, id=evento_id, is_active=True)
+        empresa = get_empresa_ativa(request)
+        evento = get_object_or_404(
+            EventoVenda, id=evento_id, empresa=empresa, is_active=True
+        )
         item = get_object_or_404(ItemPedidoVenda, id=item_id, pedido=evento.pedido, is_active=True)
         
         item.is_active = False
@@ -168,8 +194,11 @@ def faturar_evento(request, evento_id):
     TODO: Integrar com SEFAZ-BA para emissão real de NF-e
     """
     try:
-        evento = get_object_or_404(EventoVenda, id=evento_id, is_active=True)
-        
+        empresa = get_empresa_ativa(request)
+        evento = get_object_or_404(
+            EventoVenda, id=evento_id, empresa=empresa, is_active=True
+        )
+
         # Usa o serviço para faturar
         nota_fiscal = faturar_evento_com_nfe(evento, usuario=request.user)
         
@@ -192,7 +221,11 @@ def lista_eventos(request):
     """
     Lista de eventos com filtros.
     """
-    eventos = EventoVenda.objects.filter(is_active=True).select_related(
+    empresa = get_empresa_ativa(request)
+    eventos = EventoVenda.objects.filter(
+        empresa=empresa,
+        is_active=True,
+    ).select_related(
         'empresa', 'loja', 'cliente', 'pedido'
     ).prefetch_related('equipe_responsavel')
     
@@ -207,7 +240,7 @@ def lista_eventos(request):
     if tipo_filter:
         eventos = eventos.filter(tipo_evento=tipo_filter)
     if loja_filter:
-        eventos = eventos.filter(loja_id=loja_filter)
+        eventos = eventos.filter(loja_id=loja_filter, loja__empresa=empresa)
     if search:
         eventos = eventos.filter(
             nome_evento__icontains=search
@@ -220,7 +253,7 @@ def lista_eventos(request):
     
     # Buscar lojas para filtro
     from core.models import Loja
-    lojas = Loja.objects.filter(is_active=True)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
     
     context = {
         'eventos': eventos,
@@ -243,11 +276,13 @@ def detalhes_evento(request, evento_id):
     """
     Detalhes completos do evento.
     """
+    empresa = get_empresa_ativa(request)
     evento = get_object_or_404(
         EventoVenda.objects.select_related(
             'empresa', 'loja', 'cliente', 'lead', 'pedido'
         ).prefetch_related('equipe_responsavel'),
         id=evento_id,
+        empresa=empresa,
         is_active=True
     )
     
@@ -285,18 +320,29 @@ def criar_evento(request):
     from pessoas.models import Cliente
     from crm.models import Lead
     from vendas.models import CondicaoPagamento
-    
-    empresas = Empresa.objects.filter(is_active=True)
-    lojas = Loja.objects.filter(is_active=True)
-    clientes = Cliente.objects.filter(is_active=True)
-    leads = Lead.objects.filter(is_active=True, status__in=['NOVO', 'EM_ANDAMENTO'])
+
+    empresa = get_empresa_ativa(request)
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
+    clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
+    leads = Lead.objects.filter(
+        empresa=empresa,
+        is_active=True,
+        status__in=['NOVO', 'EM_ANDAMENTO'],
+    )
     
     if request.method == 'POST':
         try:
+            loja = get_object_or_404(
+                Loja,
+                pk=request.POST.get('loja'),
+                empresa=empresa,
+                is_active=True,
+            )
             # Processar formulário
             evento = EventoVenda.objects.create(
-                empresa_id=request.POST.get('empresa'),
-                loja_id=request.POST.get('loja'),
+                empresa=empresa,
+                loja=loja,
                 lead_id=request.POST.get('lead') or None,
                 cliente_id=request.POST.get('cliente') or None,
                 nome_evento=request.POST.get('nome_evento'),
@@ -361,8 +407,11 @@ def gerar_pedido_evento_view(request, pk):
     TODO: Adicionar restrição por grupo: ADMIN, GERENTE, FISCAL.
     """
     try:
-        evento = get_object_or_404(EventoVenda, pk=pk, is_active=True)
-        
+        empresa = get_empresa_ativa(request)
+        evento = get_object_or_404(
+            EventoVenda, pk=pk, empresa=empresa, is_active=True
+        )
+
         # Se já tem pedido, redireciona para o admin do pedido
         if evento.pedido:
             messages.info(request, f'Evento já possui pedido #{evento.pedido.id} associado.')
@@ -397,8 +446,11 @@ def gerar_nfe_evento_view(request, pk):
     from fiscal.services import criar_nfe_rascunho_para_pedido_evento
     
     try:
-        evento = get_object_or_404(EventoVenda, pk=pk, is_active=True)
-        
+        empresa = get_empresa_ativa(request)
+        evento = get_object_or_404(
+            EventoVenda, pk=pk, empresa=empresa, is_active=True
+        )
+
         # Verifica se tem pedido
         if not evento.pedido:
             messages.error(

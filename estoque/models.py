@@ -4,7 +4,7 @@ Modelos do módulo de estoque.
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
-from core.models import BaseModel, Loja
+from core.models import BaseModel, Empresa, Loja
 from produtos.models import Produto
 
 
@@ -119,6 +119,14 @@ class MovimentoEstoque(BaseModel):
         decimal_places=3,
         validators=[MinValueValidator(Decimal('0.01'))]
     )
+    custo_unitario = models.DecimalField(
+        'Custo Unitário',
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text='Custo unitário no momento da movimentação (obrigatório em entradas com valoração)',
+    )
     data_movimento = models.DateTimeField('Data do Movimento', auto_now_add=True)
     referencia = models.CharField(
         'Referência',
@@ -142,3 +150,153 @@ class MovimentoEstoque(BaseModel):
     def __str__(self):
         return f"{self.tipo_movimento} - {self.produto.codigo_interno} - {self.quantidade}"
 
+
+class TransferenciaInterempresa(BaseModel):
+    """
+    Registro de transferência de estoque entre duas empresas (CNPJs distintos).
+
+    Fluxo simplificado (sem NF-e):
+    - Gera MovimentoEstoque SAIDA na empresa origem
+    - Gera MovimentoEstoque ENTRADA na empresa destino
+    - Registra custo_unitario para atualizar custo médio do destino
+
+    Futura integração fiscal: adicionar campos nota_saida/nota_entrada FKs.
+    """
+
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('CONCLUIDA', 'Concluída'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+
+    empresa_origem = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT,
+        related_name='transferencias_enviadas',
+        verbose_name='Empresa Origem',
+    )
+    empresa_destino = models.ForeignKey(
+        Empresa,
+        on_delete=models.PROTECT,
+        related_name='transferencias_recebidas',
+        verbose_name='Empresa Destino',
+    )
+    local_origem = models.ForeignKey(
+        LocalEstoque,
+        on_delete=models.PROTECT,
+        related_name='transferencias_saida',
+        verbose_name='Local de Origem',
+    )
+    local_destino = models.ForeignKey(
+        LocalEstoque,
+        on_delete=models.PROTECT,
+        related_name='transferencias_entrada',
+        verbose_name='Local de Destino',
+    )
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.PROTECT,
+        related_name='transferencias_interempresa',
+        verbose_name='Produto',
+    )
+    quantidade = models.DecimalField(
+        'Quantidade',
+        max_digits=10,
+        decimal_places=3,
+        validators=[MinValueValidator(Decimal('0.001'))],
+    )
+    custo_unitario = models.DecimalField(
+        'Custo Unitário',
+        max_digits=10,
+        decimal_places=4,
+        help_text='Custo usado para atualizar custo médio na empresa destino',
+    )
+    status = models.CharField(
+        'Status',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='PENDENTE',
+    )
+    movimento_saida = models.OneToOneField(
+        MovimentoEstoque,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='transferencia_saida',
+        verbose_name='Movimento de Saída',
+    )
+    movimento_entrada = models.OneToOneField(
+        MovimentoEstoque,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='transferencia_entrada',
+        verbose_name='Movimento de Entrada',
+    )
+    observacao = models.TextField('Observação', blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Transferência Interempresa'
+        verbose_name_plural = 'Transferências Interempresa'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['empresa_origem', 'status']),
+            models.Index(fields=['empresa_destino', 'status']),
+            models.Index(fields=['produto', '-created_at']),
+        ]
+
+    def __str__(self):
+        oid = self.pk or '—'
+        return (
+            f"Transferência #{oid} "
+            f"{self.empresa_origem.nome_fantasia} → {self.empresa_destino.nome_fantasia} "
+            f"| {self.produto.codigo_interno} x {self.quantidade} [{self.status}]"
+        )
+
+
+class EstoqueValorado(BaseModel):
+    """
+    Custo médio ponderado de um produto por empresa.
+    Atualizado a cada MovimentoEstoque de entrada (com custo) e sincronizado em saídas/ajustes.
+    """
+
+    empresa = models.ForeignKey(
+        Empresa,
+        on_delete=models.CASCADE,
+        related_name='estoques_valorados',
+        verbose_name='Empresa',
+    )
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.CASCADE,
+        related_name='estoques_valorados',
+        verbose_name='Produto',
+    )
+    custo_medio = models.DecimalField(
+        'Custo Médio',
+        max_digits=10,
+        decimal_places=4,
+        default=Decimal('0.0000'),
+    )
+    quantidade_total = models.DecimalField(
+        'Quantidade Total em Estoque',
+        max_digits=10,
+        decimal_places=3,
+        default=Decimal('0.000'),
+        help_text='Soma das quantidades em todos os locais desta empresa',
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Estoque Valorado'
+        verbose_name_plural = 'Estoques Valorados'
+        unique_together = [['empresa', 'produto']]
+        indexes = [
+            models.Index(fields=['empresa', 'produto']),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.produto.codigo_interno} @ {self.empresa.nome_fantasia}: "
+            f"CM={self.custo_medio} Qtd={self.quantidade_total}"
+        )

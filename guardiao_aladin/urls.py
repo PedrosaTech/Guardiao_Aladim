@@ -82,6 +82,7 @@ urlpatterns = [
     path('eventos/', include('eventos.urls')),
     path('fiscal/', include('fiscal.urls')),
     path('produtos/', include('produtos.urls')),
+    path('estoque/', include('estoque.urls')),
     path('pessoas/', include('pessoas.urls')),
     path('orcamentos/', include('orcamentos.urls')),
     path('vendas/', include('vendas.urls')),
@@ -94,4 +95,6 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+handler403 = 'core.views.handler403'
 

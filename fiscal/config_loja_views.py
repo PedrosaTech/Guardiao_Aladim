@@ -6,15 +6,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from core.decorators import administrador_required
 from core.models import Loja
+from core.tenant import get_empresa_ativa
 from .forms import ConfiguracaoFiscalLojaForm
 from .models import ConfiguracaoFiscalLoja
 
 
 @administrador_required
 def lista_config_fiscal(request):
-    """Lista configuracoes fiscais de todas as lojas."""
+    """Lista configuracoes fiscais das lojas da empresa ativa."""
+    empresa = get_empresa_ativa(request)
     configs = (
         ConfiguracaoFiscalLoja.objects
+        .filter(loja__empresa=empresa)
         .select_related("loja", "loja__empresa")
         .order_by("loja__empresa__nome_fantasia", "loja__nome")
     )
@@ -24,8 +27,9 @@ def lista_config_fiscal(request):
 @administrador_required
 def criar_config_fiscal(request):
     """Formulario para criar configuracao fiscal de uma loja nova."""
+    empresa = get_empresa_ativa(request)
     if request.method == "POST":
-        form = ConfiguracaoFiscalLojaForm(request.POST)
+        form = ConfiguracaoFiscalLojaForm(request.POST, empresa=empresa)
         if form.is_valid():
             config = form.save(commit=False)
             config.created_by = request.user
@@ -41,13 +45,13 @@ def criar_config_fiscal(request):
         initial = {}
         loja_id = request.GET.get("loja")
         if loja_id and loja_id.isdigit():
-            lojas_livres = Loja.objects.filter(is_active=True).exclude(
+            lojas_livres = Loja.objects.filter(empresa=empresa, is_active=True).exclude(
                 configuracao_fiscal__isnull=False
             )
             loja = lojas_livres.filter(pk=int(loja_id)).first()
             if loja:
                 initial["loja"] = loja.pk
-        form = ConfiguracaoFiscalLojaForm(initial=initial)
+        form = ConfiguracaoFiscalLojaForm(initial=initial, empresa=empresa)
 
     return render(
         request,
@@ -59,13 +63,15 @@ def criar_config_fiscal(request):
 @administrador_required
 def editar_config_fiscal(request, pk):
     """Formulario para editar configuracao fiscal existente."""
+    empresa = get_empresa_ativa(request)
     config = get_object_or_404(
         ConfiguracaoFiscalLoja.objects.select_related("loja", "loja__empresa"),
         pk=pk,
+        loja__empresa=empresa,
     )
 
     if request.method == "POST":
-        form = ConfiguracaoFiscalLojaForm(request.POST, instance=config)
+        form = ConfiguracaoFiscalLojaForm(request.POST, instance=config, empresa=empresa)
         if form.is_valid():
             config = form.save(commit=False)
             config.updated_by = request.user
@@ -73,7 +79,7 @@ def editar_config_fiscal(request, pk):
             messages.success(request, f'Configuracao fiscal da loja "{config.loja}" atualizada com sucesso!')
             return redirect("fiscal:lista_config_fiscal")
     else:
-        form = ConfiguracaoFiscalLojaForm(instance=config)
+        form = ConfiguracaoFiscalLojaForm(instance=config, empresa=empresa)
 
     return render(
         request,

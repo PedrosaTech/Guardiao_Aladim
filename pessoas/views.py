@@ -6,18 +6,25 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from rest_framework import viewsets
+from core.tenant import get_empresa_ativa
 from .models import Cliente, Fornecedor
 from .serializers import ClienteSerializer, FornecedorSerializer
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
-    queryset = Cliente.objects.filter(is_active=True)
     serializer_class = ClienteSerializer
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return Cliente.objects.filter(is_active=True, empresa=empresa)
 
 
 class FornecedorViewSet(viewsets.ModelViewSet):
-    queryset = Fornecedor.objects.filter(is_active=True)
     serializer_class = FornecedorSerializer
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return Fornecedor.objects.filter(is_active=True, empresa=empresa)
 
 
 @login_required
@@ -25,20 +32,24 @@ def lista_clientes(request):
     """
     Lista de clientes com filtros.
     """
-    clientes = Cliente.objects.filter(is_active=True).select_related('empresa', 'loja')
-    
+    empresa = get_empresa_ativa(request)
+    clientes = Cliente.objects.filter(
+        empresa=empresa,
+        is_active=True,
+    ).select_related('empresa', 'loja')
+
     # Filtros
     tipo_pessoa_filter = request.GET.get('tipo_pessoa')
     empresa_filter = request.GET.get('empresa')
     loja_filter = request.GET.get('loja')
     search = request.GET.get('search')
-    
+
     if tipo_pessoa_filter:
         clientes = clientes.filter(tipo_pessoa=tipo_pessoa_filter)
-    if empresa_filter:
+    if empresa_filter and str(empresa_filter) == str(empresa.id):
         clientes = clientes.filter(empresa_id=empresa_filter)
     if loja_filter:
-        clientes = clientes.filter(loja_id=loja_filter)
+        clientes = clientes.filter(loja_id=loja_filter, loja__empresa=empresa)
     if search:
         clientes = clientes.filter(
             Q(nome_razao_social__icontains=search) |
@@ -52,8 +63,8 @@ def lista_clientes(request):
     
     # Buscar dados para filtros
     from core.models import Empresa, Loja
-    empresas = Empresa.objects.filter(is_active=True)
-    lojas = Loja.objects.filter(is_active=True)
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
     
     context = {
         'clientes': clientes,
@@ -76,9 +87,11 @@ def detalhes_cliente(request, cliente_id):
     """
     Detalhes completos do cliente.
     """
+    empresa = get_empresa_ativa(request)
     cliente = get_object_or_404(
         Cliente.objects.select_related('empresa', 'loja'),
         id=cliente_id,
+        empresa=empresa,
         is_active=True
     )
     
@@ -111,15 +124,20 @@ def criar_cliente(request):
     Cria um novo cliente.
     """
     from core.models import Empresa, Loja
-    
-    empresas = Empresa.objects.filter(is_active=True)
-    lojas = Loja.objects.filter(is_active=True)
-    
+
+    empresa = get_empresa_ativa(request)
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
+
     if request.method == 'POST':
         try:
+            loja_id = request.POST.get('loja') or None
+            if loja_id:
+                loja = get_object_or_404(Loja, pk=loja_id, empresa=empresa, is_active=True)
+                loja_id = loja.id
             cliente = Cliente.objects.create(
-                empresa_id=request.POST.get('empresa'),
-                loja_id=request.POST.get('loja') or None,
+                empresa=empresa,
+                loja_id=loja_id,
                 tipo_pessoa=request.POST.get('tipo_pessoa'),
                 nome_razao_social=request.POST.get('nome_razao_social'),
                 apelido_nome_fantasia=request.POST.get('apelido_nome_fantasia') or None,
@@ -166,13 +184,17 @@ def lista_fornecedores(request):
     """
     Lista de fornecedores com filtros.
     """
-    fornecedores = Fornecedor.objects.filter(is_active=True).select_related('empresa')
-    
+    empresa = get_empresa_ativa(request)
+    fornecedores = Fornecedor.objects.filter(
+        empresa=empresa,
+        is_active=True,
+    ).select_related('empresa')
+
     # Filtros
     empresa_filter = request.GET.get('empresa')
     search = request.GET.get('search')
-    
-    if empresa_filter:
+
+    if empresa_filter and str(empresa_filter) == str(empresa.id):
         fornecedores = fornecedores.filter(empresa_id=empresa_filter)
     if search:
         fornecedores = fornecedores.filter(
@@ -187,8 +209,8 @@ def lista_fornecedores(request):
     
     # Buscar dados para filtros
     from core.models import Empresa
-    empresas = Empresa.objects.filter(is_active=True)
-    
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+
     context = {
         'fornecedores': fornecedores,
         'empresas': empresas,
@@ -206,9 +228,11 @@ def detalhes_fornecedor(request, fornecedor_id):
     """
     Detalhes completos do fornecedor.
     """
+    empresa = get_empresa_ativa(request)
     fornecedor = get_object_or_404(
         Fornecedor.objects.select_related('empresa'),
         id=fornecedor_id,
+        empresa=empresa,
         is_active=True
     )
     
@@ -233,13 +257,14 @@ def criar_fornecedor(request):
     Cria um novo fornecedor.
     """
     from core.models import Empresa
-    
-    empresas = Empresa.objects.filter(is_active=True)
-    
+
+    empresa = get_empresa_ativa(request)
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+
     if request.method == 'POST':
         try:
             fornecedor = Fornecedor.objects.create(
-                empresa_id=request.POST.get('empresa'),
+                empresa=empresa,
                 razao_social=request.POST.get('razao_social'),
                 nome_fantasia=request.POST.get('nome_fantasia') or None,
                 cnpj=request.POST.get('cnpj'),

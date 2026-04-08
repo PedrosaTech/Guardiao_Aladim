@@ -244,7 +244,8 @@ class FinancialService:
     def calcular_fluxo_caixa(
         data_inicio: date,
         data_fim: date,
-        conta_financeira: Optional[ContaFinanceira] = None
+        conta_financeira: Optional[ContaFinanceira] = None,
+        empresa=None,
     ) -> List[Dict]:
         """
         Calcula fluxo de caixa para um período.
@@ -265,10 +266,12 @@ class FinancialService:
             data_movimento__lte=data_fim,
             is_active=True
         )
-        
+
         if conta_financeira:
             movimentos_qs = movimentos_qs.filter(conta=conta_financeira)
-        
+        elif empresa is not None:
+            movimentos_qs = movimentos_qs.filter(conta__empresa=empresa)
+
         # Agrupa por data
         movimentos_por_data = {}
         
@@ -302,7 +305,10 @@ class FinancialService:
         return resultado
     
     @staticmethod
-    def get_saldo_atual(conta_financeira: Optional[ContaFinanceira] = None) -> Decimal:
+    def get_saldo_atual(
+        conta_financeira: Optional[ContaFinanceira] = None,
+        empresa=None,
+    ) -> Decimal:
         """
         Retorna saldo atual de uma conta ou todas as contas.
         
@@ -313,10 +319,12 @@ class FinancialService:
             Saldo total (entradas - saídas)
         """
         movimentos_qs = MovimentoFinanceiro.objects.filter(is_active=True)
-        
+
         if conta_financeira:
             movimentos_qs = movimentos_qs.filter(conta=conta_financeira)
-        
+        elif empresa is not None:
+            movimentos_qs = movimentos_qs.filter(conta__empresa=empresa)
+
         entradas = movimentos_qs.filter(tipo='ENTRADA').aggregate(
             total=Sum('valor')
         )['total'] or Decimal('0.00')

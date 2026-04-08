@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
 from rest_framework import viewsets
@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import OrcamentoVenda, ItemOrcamentoVenda
 from .serializers import OrcamentoVendaSerializer, ItemOrcamentoVendaSerializer
+from core.tenant import get_empresa_ativa
 
 
 class OrcamentoVendaViewSet(viewsets.ModelViewSet):
@@ -23,9 +24,12 @@ class OrcamentoVendaViewSet(viewsets.ModelViewSet):
     
     Permite listar, criar, editar e visualizar orçamentos.
     """
-    queryset = OrcamentoVenda.objects.filter(is_active=True)
     serializer_class = OrcamentoVendaSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return OrcamentoVenda.objects.filter(is_active=True, empresa=empresa)
     
     def perform_create(self, serializer):
         """
@@ -74,10 +78,16 @@ class ItemOrcamentoVendaViewSet(viewsets.ModelViewSet):
     """
     ViewSet para ItemOrcamentoVenda.
     """
-    queryset = ItemOrcamentoVenda.objects.filter(is_active=True)
     serializer_class = ItemOrcamentoVendaSerializer
     permission_classes = [IsAuthenticated]
-    
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return ItemOrcamentoVenda.objects.filter(
+            is_active=True,
+            orcamento__empresa=empresa,
+        )
+
     def perform_create(self, serializer):
         """
         Ao criar um item, define created_by.
@@ -96,7 +106,11 @@ def lista_orcamentos(request):
     """
     Lista de orçamentos com filtros.
     """
-    orcamentos = OrcamentoVenda.objects.filter(is_active=True).select_related(
+    empresa = get_empresa_ativa(request)
+    orcamentos = OrcamentoVenda.objects.filter(
+        empresa=empresa,
+        is_active=True,
+    ).select_related(
         'empresa', 'loja', 'cliente', 'vendedor', 'pedido_gerado'
     )
     
@@ -118,10 +132,10 @@ def lista_orcamentos(request):
         orcamentos = orcamentos.filter(tipo_operacao=tipo_operacao_filter)
     if status_filter:
         orcamentos = orcamentos.filter(status=status_filter)
-    if empresa_filter:
+    if empresa_filter and str(empresa_filter) == str(empresa.id):
         orcamentos = orcamentos.filter(empresa_id=empresa_filter)
     if loja_filter:
-        orcamentos = orcamentos.filter(loja_id=loja_filter)
+        orcamentos = orcamentos.filter(loja_id=loja_filter, loja__empresa=empresa)
     if vendedor_filter:
         orcamentos = orcamentos.filter(vendedor_id=vendedor_filter)
     if data_inicio:
@@ -165,8 +179,8 @@ def lista_orcamentos(request):
     from django.contrib.auth import get_user_model
     
     User = get_user_model()
-    empresas = Empresa.objects.filter(is_active=True)
-    lojas = Loja.objects.filter(is_active=True)
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
     vendedores = User.objects.filter(is_active=True)
     
     # Estatísticas
@@ -209,11 +223,13 @@ def detalhes_orcamento(request, orcamento_id):
     """
     Detalhes completos do orçamento.
     """
+    empresa = get_empresa_ativa(request)
     orcamento = get_object_or_404(
         OrcamentoVenda.objects.select_related(
             'empresa', 'loja', 'cliente', 'vendedor', 'pedido_gerado', 'condicao_pagamento_prevista'
         ),
         id=orcamento_id,
+        empresa=empresa,
         is_active=True
     )
     
@@ -246,11 +262,12 @@ def criar_orcamento(request):
     from core.models import Empresa, Loja
     from pessoas.models import Cliente
     from vendas.models import CondicaoPagamento
-    
-    empresas = Empresa.objects.filter(is_active=True)
-    lojas = Loja.objects.filter(is_active=True)
-    clientes = Cliente.objects.filter(is_active=True)
-    condicoes_pagamento = CondicaoPagamento.objects.filter(is_active=True)
+
+    empresa = get_empresa_ativa(request)
+    empresas = Empresa.objects.filter(pk=empresa.pk)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
+    clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
+    condicoes_pagamento = CondicaoPagamento.objects.filter(empresa=empresa, is_active=True)
     
     if request.method == 'POST':
         try:
@@ -259,9 +276,15 @@ def criar_orcamento(request):
             if not data_validade:
                 data_validade = (timezone.now().date() + timedelta(days=30)).isoformat()
             
+            loja = get_object_or_404(
+                Loja,
+                pk=request.POST.get('loja'),
+                empresa=empresa,
+                is_active=True,
+            )
             orcamento = OrcamentoVenda.objects.create(
-                empresa_id=request.POST.get('empresa'),
-                loja_id=request.POST.get('loja'),
+                empresa=empresa,
+                loja=loja,
                 cliente_id=request.POST.get('cliente') or None,
                 vendedor=request.user,
                 nome_responsavel=request.POST.get('nome_responsavel'),
@@ -316,10 +339,13 @@ def buscar_produtos_rapido(request):
     if not termo:
         return JsonResponse({'produtos': []})
 
-    from core.models import Empresa
-    from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
+    from produtos.utils import (
+        buscar_produto_por_codigo,
+        buscar_produtos_por_termo,
+        preco_venda_para_json,
+    )
 
-    empresa = Empresa.objects.filter(is_active=True).first()
+    empresa = get_empresa_ativa(request)
 
     if termo.isdigit() and len(termo) >= 8:
         produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=empresa)
@@ -330,7 +356,7 @@ def buscar_produtos_rapido(request):
                     'codigo_interno': produto.codigo_interno,
                     'codigo_barras': termo,
                     'descricao': produto.descricao,
-                    'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                    'preco_venda_sugerido': preco_venda_para_json(produto, empresa),
                     'unidade_comercial': produto.unidade_comercial,
                     'classe_risco': produto.classe_risco,
                     'subclasse_risco': produto.subclasse_risco or '',
@@ -347,7 +373,7 @@ def buscar_produtos_rapido(request):
             'codigo_interno': p.codigo_interno,
             'codigo_barras': p.codigo_barras or '',
             'descricao': p.descricao,
-            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'preco_venda_sugerido': preco_venda_para_json(p, empresa),
             'unidade_comercial': p.unidade_comercial,
             'classe_risco': p.classe_risco,
             'subclasse_risco': p.subclasse_risco or '',
@@ -371,10 +397,12 @@ def buscar_clientes_rapido(request):
     
     from pessoas.models import Cliente
     from django.db.models import Q
-    
+
+    empresa = get_empresa_ativa(request)
     # Busca por nome, CPF/CNPJ, email ou telefone
     clientes = Cliente.objects.filter(
-        is_active=True
+        empresa=empresa,
+        is_active=True,
     ).filter(
         Q(nome_razao_social__icontains=termo) |
         Q(apelido_nome_fantasia__icontains=termo) |
@@ -407,9 +435,9 @@ def orcamento_rapido(request):
     from produtos.models import Produto
     from pessoas.models import Cliente
     
-    # Obter empresa/loja padrão (primeira disponível)
-    empresa = Empresa.objects.filter(is_active=True).first()
-    loja = Loja.objects.filter(is_active=True).first()
+    # Empresa ativa na sessão e primeira loja desta empresa
+    empresa = get_empresa_ativa(request)
+    loja = Loja.objects.filter(empresa=empresa, is_active=True).first()
     
     if not empresa or not loja:
         messages.error(request, 'É necessário cadastrar pelo menos uma empresa e uma loja.')
@@ -448,7 +476,11 @@ def orcamento_rapido(request):
             # Se tem cliente, usar nome do cliente como nome_responsavel se não informado
             if cliente_id and not nome_responsavel:
                 try:
-                    cliente = Cliente.objects.get(id=cliente_id, is_active=True)
+                    cliente = Cliente.objects.get(
+                        id=cliente_id,
+                        empresa=empresa,
+                        is_active=True,
+                    )
                     nome_responsavel = cliente.nome_razao_social
                 except Cliente.DoesNotExist:
                     pass
@@ -479,17 +511,26 @@ def orcamento_rapido(request):
                     continue
                 
                 try:
-                    produto = Produto.objects.get(id=produto_id, is_active=True)
-                    
+                    produto = get_object_or_404(
+                        Produto,
+                        id=produto_id,
+                        is_active=True,
+                        parametros_por_empresa__empresa=empresa,
+                        parametros_por_empresa__ativo_nessa_empresa=True,
+                    )
+                    from produtos.utils import preco_venda_para_empresa
+                    pu = preco_venda_para_empresa(produto, orcamento.empresa)
+                    if pu is None:
+                        continue
                     ItemOrcamentoVenda.objects.create(
                         orcamento=orcamento,
                         produto=produto,
                         quantidade=quantidade,
-                        valor_unitario=produto.preco_venda_sugerido,  # Sempre usa preço sugerido
+                        valor_unitario=pu,
                         desconto=desconto,
                         created_by=request.user,
                     )
-                except Produto.DoesNotExist:
+                except Http404:
                     continue
             
             # Recalcular totais
@@ -529,7 +570,13 @@ def adicionar_item_orcamento(request, orcamento_id):
     """
     Adiciona um item ao orçamento.
     """
-    orcamento = get_object_or_404(OrcamentoVenda, id=orcamento_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    orcamento = get_object_or_404(
+        OrcamentoVenda,
+        id=orcamento_id,
+        empresa=empresa,
+        is_active=True,
+    )
     
     # Verificar se pode editar
     if orcamento.pedido_gerado:
@@ -550,11 +597,19 @@ def adicionar_item_orcamento(request, orcamento_id):
                 messages.error(request, 'Produto é obrigatório.')
                 return redirect('orcamentos:detalhes_orcamento', orcamento_id=orcamento.id)
             
-            produto = Produto.objects.get(id=produto_id, is_active=True)
-            
-            # Valor unitário sempre será o preço sugerido do produto (não pode ser alterado)
-            valor_unitario = produto.preco_venda_sugerido
-            
+            produto = get_object_or_404(
+                Produto,
+                id=produto_id,
+                is_active=True,
+                parametros_por_empresa__empresa=empresa,
+                parametros_por_empresa__ativo_nessa_empresa=True,
+            )
+            from produtos.utils import preco_venda_para_empresa
+            valor_unitario = preco_venda_para_empresa(produto, orcamento.empresa)
+            if valor_unitario is None:
+                messages.error(request, 'Produto sem preço cadastrado para a empresa do orçamento.')
+                return redirect('orcamentos:detalhes_orcamento', orcamento_id=orcamento.id)
+
             from .models import ItemOrcamentoVenda
             item = ItemOrcamentoVenda.objects.create(
                 orcamento=orcamento,
@@ -576,14 +631,29 @@ def adicionar_item_orcamento(request, orcamento_id):
             return redirect('orcamentos:detalhes_orcamento', orcamento_id=orcamento.id)
     
     # GET - mostrar formulário
-    from produtos.models import Produto
-    produtos = Produto.objects.filter(is_active=True).order_by('descricao')
-    
+    from django.db.models import OuterRef, Subquery
+    from produtos.models import Produto, ProdutoParametrosEmpresa
+    sub_pv = ProdutoParametrosEmpresa.objects.filter(
+        produto_id=OuterRef('pk'),
+        empresa_id=orcamento.empresa_id,
+        ativo_nessa_empresa=True,
+    )
+    produtos = (
+        Produto.objects.filter(
+            is_active=True,
+            parametros_por_empresa__empresa=orcamento.empresa,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        )
+        .distinct()
+        .annotate(preco_venda_sugerido=Subquery(sub_pv.values('preco_venda')[:1]))
+        .order_by('descricao')
+    )
+
     context = {
         'orcamento': orcamento,
         'produtos': produtos,
     }
-    
+
     return render(request, 'orcamentos/adicionar_item.html', context)
 
 
@@ -592,7 +662,13 @@ def editar_item_orcamento(request, orcamento_id, item_id):
     """
     Edita um item do orçamento.
     """
-    orcamento = get_object_or_404(OrcamentoVenda, id=orcamento_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    orcamento = get_object_or_404(
+        OrcamentoVenda,
+        id=orcamento_id,
+        empresa=empresa,
+        is_active=True,
+    )
     item = get_object_or_404(ItemOrcamentoVenda, id=item_id, orcamento=orcamento, is_active=True)
     
     # Verificar se pode editar
@@ -621,11 +697,14 @@ def editar_item_orcamento(request, orcamento_id, item_id):
             messages.error(request, f'Erro ao atualizar item: {str(e)}')
             return redirect('orcamentos:detalhes_orcamento', orcamento_id=orcamento.id)
     
+    from produtos.utils import preco_venda_para_empresa
+
     context = {
         'orcamento': orcamento,
         'item': item,
+        'preco_sugerido': preco_venda_para_empresa(item.produto, orcamento.empresa),
     }
-    
+
     return render(request, 'orcamentos/editar_item.html', context)
 
 
@@ -634,7 +713,13 @@ def remover_item_orcamento(request, orcamento_id, item_id):
     """
     Remove (desativa) um item do orçamento.
     """
-    orcamento = get_object_or_404(OrcamentoVenda, id=orcamento_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    orcamento = get_object_or_404(
+        OrcamentoVenda,
+        id=orcamento_id,
+        empresa=empresa,
+        is_active=True,
+    )
     item = get_object_or_404(ItemOrcamentoVenda, id=item_id, orcamento=orcamento, is_active=True)
     
     # Verificar se pode editar
@@ -688,17 +773,19 @@ def imprimir_orcamento_pdf(request, orcamento_id):
             status=500
         )
     
+    empresa = get_empresa_ativa(request)
     orcamento = get_object_or_404(
         OrcamentoVenda.objects.select_related(
             'empresa', 'loja', 'cliente', 'vendedor', 'condicao_pagamento_prevista'
         ),
         id=orcamento_id,
+        empresa=empresa,
         is_active=True
     )
-    
+
     # Buscar itens
     itens = orcamento.itens.filter(is_active=True).select_related('produto')
-    
+
     # Preparar contexto
     from django.template.loader import render_to_string
     from django.http import HttpResponse
@@ -730,7 +817,13 @@ def converter_orcamento_pedido(request, orcamento_id):
     """
     Converte um orçamento em pedido.
     """
-    orcamento = get_object_or_404(OrcamentoVenda, id=orcamento_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    orcamento = get_object_or_404(
+        OrcamentoVenda,
+        id=orcamento_id,
+        empresa=empresa,
+        is_active=True,
+    )
     
     # Verificar se tem itens
     if not orcamento.itens.filter(is_active=True).exists():
@@ -762,10 +855,14 @@ def relatorio_orcamentos(request):
     data_inicio = request.GET.get('data_inicio')
     data_fim = request.GET.get('data_fim')
     
-    orcamentos = OrcamentoVenda.objects.filter(is_active=True).select_related(
+    empresa = get_empresa_ativa(request)
+    orcamentos = OrcamentoVenda.objects.filter(
+        empresa=empresa,
+        is_active=True,
+    ).select_related(
         'empresa', 'loja', 'cliente', 'vendedor'
     )
-    
+
     if origem_filter:
         orcamentos = orcamentos.filter(origem=origem_filter)
     if tipo_operacao_filter:

@@ -143,20 +143,11 @@
                 <h3>Informações Básicas</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Empresa <span class="required">*</span></label>
+                        <label>Empresa (parâmetros comerciais/fiscais) <span class="required">*</span></label>
                         <select name="empresa" required>
                             <option value="">Selecione...</option>
                             {% for empresa in empresas %}
                             <option value="{{ empresa.id }}">{{ empresa.nome_fantasia }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Loja</label>
-                        <select name="loja">
-                            <option value="">Nenhuma</option>
-                            {% for loja in lojas %}
-                            <option value="{{ loja.id }}">{{ loja.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>

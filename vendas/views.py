@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -19,6 +19,7 @@ from .models import CondicaoPagamento, PedidoVenda, ItemPedidoVenda
 from .serializers import CondicaoPagamentoSerializer, PedidoVendaSerializer
 from .forms import RelatorioVendasForm
 from . import reports
+from core.tenant import get_empresa_ativa
 
 logger = logging.getLogger(__name__)
 
@@ -66,13 +67,19 @@ def safe_decimal(value, default=Decimal('0.00')):
 
 
 class CondicaoPagamentoViewSet(viewsets.ModelViewSet):
-    queryset = CondicaoPagamento.objects.filter(is_active=True)
     serializer_class = CondicaoPagamentoSerializer
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return CondicaoPagamento.objects.filter(is_active=True, empresa=empresa)
 
 
 class PedidoVendaViewSet(viewsets.ModelViewSet):
-    queryset = PedidoVenda.objects.all()
     serializer_class = PedidoVendaSerializer
+
+    def get_queryset(self):
+        empresa = get_empresa_ativa(self.request)
+        return PedidoVenda.objects.filter(is_active=True, loja__empresa=empresa)
 
 
 @login_required
@@ -80,7 +87,11 @@ def lista_pedidos(request):
     """
     Lista de pedidos de venda com filtros.
     """
-    pedidos = PedidoVenda.objects.filter(is_active=True).select_related(
+    empresa = get_empresa_ativa(request)
+    pedidos = PedidoVenda.objects.filter(
+        is_active=True,
+        loja__empresa=empresa,
+    ).select_related(
         'loja', 'cliente', 'vendedor', 'condicao_pagamento'
     )
     
@@ -99,9 +110,9 @@ def lista_pedidos(request):
     if status_filter:
         pedidos = pedidos.filter(status=status_filter)
     if loja_filter:
-        pedidos = pedidos.filter(loja_id=loja_filter)
+        pedidos = pedidos.filter(loja_id=loja_filter, loja__empresa=empresa)
     if cliente_filter:
-        pedidos = pedidos.filter(cliente_id=cliente_filter)
+        pedidos = pedidos.filter(cliente_id=cliente_filter, cliente__empresa=empresa)
     if vendedor_filter:
         pedidos = pedidos.filter(vendedor_id=vendedor_filter)
     if data_inicio:
@@ -132,8 +143,8 @@ def lista_pedidos(request):
     from django.contrib.auth import get_user_model
     
     User = get_user_model()
-    lojas = Loja.objects.filter(is_active=True).select_related('empresa')
-    clientes = Cliente.objects.filter(is_active=True)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True).select_related('empresa')
+    clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
     vendedores = User.objects.filter(is_active=True)
     
     # Estatísticas
@@ -173,11 +184,13 @@ def detalhes_pedido(request, pedido_id):
     """
     Detalhes completos do pedido de venda.
     """
+    empresa = get_empresa_ativa(request)
     pedido = get_object_or_404(
         PedidoVenda.objects.select_related(
             'loja', 'cliente', 'vendedor', 'condicao_pagamento'
         ),
         id=pedido_id,
+        loja__empresa=empresa,
         is_active=True
     )
     
@@ -210,20 +223,10 @@ def relatorio_vendas_consolidado(request):
     Relatório de vendas consolidado (somente pedidos FATURADO).
     Inclui filtros e permite segmentar por fornecedor do código alternativo usado.
     """
-    # Melhor esforço para filtrar por empresa (se existir contexto)
-    empresa = None
-    if hasattr(request.user, "empresa"):
-        empresa = getattr(request.user, "empresa", None)
-    if not empresa:
-        try:
-            from core.models import Empresa
-
-            empresa = Empresa.objects.filter(is_active=True).first()
-        except Exception:
-            empresa = None
+    empresa = get_empresa_ativa(request)
 
     form = RelatorioVendasForm(request.GET or None, empresa=empresa)
-    qs = reports.aplicar_filtros(reports.queryset_base_vendas(), form)
+    qs = reports.aplicar_filtros(reports.queryset_base_vendas(empresa), form)
 
     agrupar_por = "produto"
     ordenar_por = "-valor_total"
@@ -295,10 +298,11 @@ def criar_pedido(request):
     """
     from core.models import Loja
     from pessoas.models import Cliente
-    
-    lojas = Loja.objects.filter(is_active=True).select_related('empresa')
-    clientes = Cliente.objects.filter(is_active=True)
-    condicoes_pagamento = CondicaoPagamento.objects.filter(is_active=True)
+
+    empresa = get_empresa_ativa(request)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True).select_related('empresa')
+    clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
+    condicoes_pagamento = CondicaoPagamento.objects.filter(empresa=empresa, is_active=True)
     
     if request.method == 'POST':
         try:
@@ -306,7 +310,7 @@ def criar_pedido(request):
             condicao_pagamento_id = request.POST.get('condicao_pagamento')
             if not condicao_pagamento_id:
                 # Buscar condição padrão da loja
-                loja = Loja.objects.get(id=request.POST.get('loja'))
+                loja = Loja.objects.get(id=request.POST.get('loja'), empresa=empresa)
                 condicao_pagamento = CondicaoPagamento.objects.filter(
                     empresa=loja.empresa,
                     is_active=True,
@@ -324,7 +328,11 @@ def criar_pedido(request):
                         created_by=request.user,
                     )
             else:
-                condicao_pagamento = CondicaoPagamento.objects.get(id=condicao_pagamento_id, is_active=True)
+                condicao_pagamento = CondicaoPagamento.objects.get(
+                    id=condicao_pagamento_id,
+                    empresa=empresa,
+                    is_active=True,
+                )
             
             pedido = PedidoVenda.objects.create(
                 loja_id=request.POST.get('loja'),
@@ -369,7 +377,13 @@ def editar_pedido(request, pedido_id):
     """
     Edita um pedido de venda.
     """
-    pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    pedido = get_object_or_404(
+        PedidoVenda,
+        id=pedido_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     
     # Verificar se pode editar
     if pedido.status == 'FATURADO':
@@ -378,11 +392,11 @@ def editar_pedido(request, pedido_id):
     
     from core.models import Loja
     from pessoas.models import Cliente
-    
-    lojas = Loja.objects.filter(is_active=True).select_related('empresa')
-    clientes = Cliente.objects.filter(is_active=True)
-    condicoes_pagamento = CondicaoPagamento.objects.filter(is_active=True)
-    
+
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True).select_related('empresa')
+    clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
+    condicoes_pagamento = CondicaoPagamento.objects.filter(empresa=empresa, is_active=True)
+
     if request.method == 'POST':
         try:
             pedido.loja_id = request.POST.get('loja')
@@ -417,7 +431,13 @@ def adicionar_item_pedido(request, pedido_id):
     """
     Adiciona um item ao pedido.
     """
-    pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    pedido = get_object_or_404(
+        PedidoVenda,
+        id=pedido_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     
     # Verificar se pode editar
     if pedido.status == 'FATURADO':
@@ -449,11 +469,25 @@ def adicionar_item_pedido(request, pedido_id):
                 messages.error(request, 'Quantidade deve ser maior que zero.')
                 return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
             
-            produto = Produto.objects.get(id=produto_id, is_active=True)
+            produto = get_object_or_404(
+                Produto,
+                id=produto_id,
+                is_active=True,
+                parametros_por_empresa__empresa=empresa,
+                parametros_por_empresa__ativo_nessa_empresa=True,
+            )
             
-            # Se não informou preço, usar preço sugerido do produto
+            # Se não informou preço, usar preço da empresa (parâmetros do produto)
             if preco_unitario <= 0:
-                preco_unitario = produto.preco_venda_sugerido
+                from produtos.utils import preco_venda_para_empresa
+                pv = preco_venda_para_empresa(produto, pedido.loja.empresa)
+                if pv is None:
+                    messages.error(
+                        request,
+                        f'Produto sem preço cadastrado para a empresa {pedido.loja.empresa.nome_fantasia}.',
+                    )
+                    return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
+                preco_unitario = pv
             
             # Validar preço unitário
             if preco_unitario <= 0:
@@ -476,8 +510,8 @@ def adicionar_item_pedido(request, pedido_id):
             messages.success(request, f'Item "{produto.descricao}" adicionado com sucesso!')
             return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
         
-        except Produto.DoesNotExist:
-            messages.error(request, 'Produto não encontrado.')
+        except Http404:
+            messages.error(request, 'Produto não encontrado ou indisponível para esta empresa.')
             return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
         except Exception as e:
             import traceback
@@ -487,8 +521,23 @@ def adicionar_item_pedido(request, pedido_id):
             return redirect('vendas:adicionar_item_pedido', pedido_id=pedido.id)
     
     # GET - mostrar formulário
-    from produtos.models import Produto
-    produtos = Produto.objects.filter(is_active=True).order_by('descricao')
+    from django.db.models import OuterRef, Subquery
+    from produtos.models import Produto, ProdutoParametrosEmpresa
+    sub_pv = ProdutoParametrosEmpresa.objects.filter(
+        produto_id=OuterRef('pk'),
+        empresa_id=pedido.loja.empresa_id,
+        ativo_nessa_empresa=True,
+    )
+    produtos = (
+        Produto.objects.filter(
+            is_active=True,
+            parametros_por_empresa__empresa=pedido.loja.empresa,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        )
+        .distinct()
+        .annotate(preco_venda_sugerido=Subquery(sub_pv.values('preco_venda')[:1]))
+        .order_by('descricao')
+    )
     
     context = {
         'pedido': pedido,
@@ -503,7 +552,13 @@ def editar_item_pedido(request, pedido_id, item_id):
     """
     Edita um item do pedido.
     """
-    pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    pedido = get_object_or_404(
+        PedidoVenda,
+        id=pedido_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     item = get_object_or_404(ItemPedidoVenda, id=item_id, pedido=pedido, is_active=True)
     
     # Verificar se pode editar
@@ -564,7 +619,13 @@ def remover_item_pedido(request, pedido_id, item_id):
     """
     Remove (desativa) um item do pedido.
     """
-    pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    pedido = get_object_or_404(
+        PedidoVenda,
+        id=pedido_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     item = get_object_or_404(ItemPedidoVenda, id=item_id, pedido=pedido, is_active=True)
     
     # Verificar se pode editar
@@ -602,8 +663,14 @@ def faturar_pedido(request, pedido_id):
     from django.db import transaction
     from fiscal.services import criar_nfe_rascunho_para_pedido
     
-    pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
-    
+    empresa = get_empresa_ativa(request)
+    pedido = get_object_or_404(
+        PedidoVenda,
+        id=pedido_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
+
     if pedido.status == 'FATURADO':
         messages.info(request, 'Pedido já está faturado.')
         return redirect('vendas:detalhes_pedido', pedido_id=pedido.id)
@@ -655,7 +722,13 @@ def cancelar_pedido(request, pedido_id):
     """
     Cancela um pedido (muda status para CANCELADO).
     """
-    pedido = get_object_or_404(PedidoVenda, id=pedido_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    pedido = get_object_or_404(
+        PedidoVenda,
+        id=pedido_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     
     if pedido.status == 'CANCELADO':
         messages.info(request, 'Pedido já está cancelado.')
@@ -688,10 +761,16 @@ def buscar_produtos_rapido(request):
     if not termo:
         return JsonResponse({'produtos': []})
 
-    from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
+    from produtos.utils import (
+        buscar_produto_por_codigo,
+        buscar_produtos_por_termo,
+        preco_venda_para_json,
+    )
+
+    empresa_ctx = get_empresa_ativa(request)
 
     if termo.isdigit() and len(termo) >= 8:
-        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=None)
+        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=empresa_ctx)
         if produto:
             return JsonResponse({
                 'produtos': [{
@@ -699,14 +778,14 @@ def buscar_produtos_rapido(request):
                     'codigo_interno': produto.codigo_interno,
                     'codigo_barras': termo,
                     'descricao': produto.descricao,
-                    'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                    'preco_venda_sugerido': preco_venda_para_json(produto, empresa_ctx),
                     'unidade_comercial': produto.unidade_comercial,
                     'multiplicador': float(mult),
                     'info_codigo': codigo_alt.descricao if codigo_alt else None,
                 }]
             })
 
-    produtos = buscar_produtos_por_termo(termo, empresa=None, limit=10)
+    produtos = buscar_produtos_por_termo(termo, empresa=empresa_ctx, limit=10)
     resultados = []
     for p in produtos:
         resultados.append({
@@ -714,7 +793,7 @@ def buscar_produtos_rapido(request):
             'codigo_interno': p.codigo_interno,
             'codigo_barras': p.codigo_barras or '',
             'descricao': p.descricao,
-            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'preco_venda_sugerido': preco_venda_para_json(p, empresa_ctx),
             'unidade_comercial': p.unidade_comercial,
             'multiplicador': 1.0,
             'info_codigo': None,
@@ -736,9 +815,11 @@ def buscar_clientes_rapido(request):
     from pessoas.models import Cliente
     from django.db.models import Q
     
+    empresa = get_empresa_ativa(request)
     # Busca por nome, CPF/CNPJ, email ou telefone
     clientes = Cliente.objects.filter(
-        is_active=True
+        empresa=empresa,
+        is_active=True,
     ).filter(
         Q(nome_razao_social__icontains=termo) |
         Q(apelido_nome_fantasia__icontains=termo) |

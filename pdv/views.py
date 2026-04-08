@@ -4,8 +4,7 @@ Views do módulo PDV.
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -17,8 +16,14 @@ import json
 import logging
 
 from core.models import Loja
+from core.tenant import get_empresa_ativa
 from produtos.models import Produto
-from produtos.utils import buscar_produto_por_codigo, buscar_produtos_por_termo
+from produtos.utils import (
+    buscar_produto_por_codigo,
+    buscar_produtos_por_termo,
+    preco_venda_para_json,
+    preco_venda_para_empresa,
+)
 from pessoas.models import Cliente
 from vendas.models import CondicaoPagamento
 from vendas.models import PedidoVenda
@@ -27,6 +32,13 @@ from .models import CaixaSessao, Pagamento, CompradorPirotecnia, RegistroVendaPi
 from .validators import validar_cpf, formatar_cpf, calcular_idade, validar_idade_minima
 
 logger = logging.getLogger(__name__)
+
+
+def _loja_sessao(request):
+    """Primeira loja da empresa ativa na sessão."""
+    empresa = get_empresa_ativa(request)
+    return Loja.objects.filter(empresa=empresa, is_active=True).first()
+
 
 try:
     from weasyprint import HTML
@@ -44,11 +56,11 @@ def pdv_view(request):
     """
     # TODO: Obter loja do usuário ou da sessão
     # Por enquanto, pega a primeira loja (ajustar conforme necessidade)
-    loja = Loja.objects.filter(is_active=True).first()
-    
+    loja = _loja_sessao(request)
+
     if not loja:
         return render(request, 'pdv/erro.html', {
-            'mensagem': 'Nenhuma loja cadastrada. Por favor, cadastre uma loja no admin.'
+            'mensagem': 'Nenhuma loja cadastrada para a empresa ativa. Cadastre uma loja ou troque de empresa.'
         })
     
     # Verifica se há sessão de caixa aberta
@@ -77,12 +89,15 @@ def abrir_caixa(request):
     Tela para abrir uma nova sessão de caixa.
     """
     # Busca loja (por enquanto pega a primeira)
-    loja = Loja.objects.filter(is_active=True).first()
-    
+    loja = _loja_sessao(request)
+
     if not loja:
-        messages.error(request, 'Nenhuma loja cadastrada. Por favor, cadastre uma loja no admin.')
+        messages.error(
+            request,
+            'Nenhuma loja cadastrada para a empresa ativa.',
+        )
         return redirect('pdv:pdv')
-    
+
     # Verifica se já existe caixa aberto para este usuário
     caixa_aberto = CaixaSessao.objects.filter(
         loja=loja,
@@ -130,12 +145,12 @@ def fechar_caixa(request, caixa_id=None):
     Tela para fechar uma sessão de caixa.
     """
     # Busca loja
-    loja = Loja.objects.filter(is_active=True).first()
-    
+    loja = _loja_sessao(request)
+
     if not loja:
-        messages.error(request, 'Nenhuma loja cadastrada.')
+        messages.error(request, 'Nenhuma loja cadastrada para a empresa ativa.')
         return redirect('pdv:pdv')
-    
+
     # Se não informou caixa_id, busca o caixa aberto do usuário
     if caixa_id:
         caixa = get_object_or_404(CaixaSessao, id=caixa_id, loja=loja, usuario_abertura=request.user)
@@ -229,15 +244,17 @@ def buscar_produto(request):
     if not termo:
         return JsonResponse({'erro': 'Termo de busca não informado'}, status=400)
 
+    empresa_ctx = get_empresa_ativa(request)
+
     if termo.isdigit() and len(termo) >= 8:
-        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=None)
+        produto, codigo_alt, mult = buscar_produto_por_codigo(termo, empresa=empresa_ctx)
         if produto:
             resultados = [{
                 'id': produto.id,
                 'codigo_interno': produto.codigo_interno,
                 'codigo_barras': termo,
                 'descricao': produto.descricao,
-                'preco_venda_sugerido': str(produto.preco_venda_sugerido),
+                'preco_venda_sugerido': preco_venda_para_json(produto, empresa_ctx),
                 'unidade_comercial': produto.unidade_comercial,
                 'possui_restricao_exercito': produto.possui_restricao_exercito,
                 'multiplicador': float(mult),
@@ -246,7 +263,7 @@ def buscar_produto(request):
             }]
             return JsonResponse({'produtos': resultados})
 
-    produtos = buscar_produtos_por_termo(termo, empresa=None, limit=10)
+    produtos = buscar_produtos_por_termo(termo, empresa=empresa_ctx, limit=10)
     resultados = []
     for p in produtos:
         resultados.append({
@@ -254,7 +271,7 @@ def buscar_produto(request):
             'codigo_interno': p.codigo_interno,
             'codigo_barras': p.codigo_barras or '',
             'descricao': p.descricao,
-            'preco_venda_sugerido': str(p.preco_venda_sugerido),
+            'preco_venda_sugerido': preco_venda_para_json(p, empresa_ctx),
             'unidade_comercial': p.unidade_comercial,
             'possui_restricao_exercito': p.possui_restricao_exercito,
             'multiplicador': 1.0,
@@ -285,35 +302,53 @@ def criar_orcamento_pdv(request):
         if not itens:
             return JsonResponse({'erro': 'O orçamento deve ter pelo menos um item'}, status=400)
         
-        # Busca loja
+        empresa_at = get_empresa_ativa(request)
         try:
-            loja = Loja.objects.get(id=loja_id, is_active=True)
+            loja = Loja.objects.get(id=loja_id, empresa=empresa_at, is_active=True)
         except Loja.DoesNotExist:
             return JsonResponse({'erro': 'Loja não encontrada'}, status=404)
-        
+
         # Cliente (opcional)
         cliente = None
         if cliente_id:
             try:
-                cliente = Cliente.objects.get(id=cliente_id, is_active=True)
+                cliente = Cliente.objects.get(
+                    id=cliente_id,
+                    empresa=empresa_at,
+                    is_active=True,
+                )
             except Cliente.DoesNotExist:
                 logger.warning(f"Cliente {cliente_id} não encontrado, continuando sem cliente")
-        
+
         # Valida itens
         itens_validos = []
         for item in itens:
             produto_id = item.get('produto_id')
             quantidade = item.get('quantidade')
-            
+
             if not produto_id or not quantidade:
                 return JsonResponse({'erro': 'Item inválido: produto_id e quantidade são obrigatórios'}, status=400)
-            
-            try:
-                produto = Produto.objects.get(id=produto_id, is_active=True)
-            except Produto.DoesNotExist:
+
+            produto = (
+                Produto.objects.filter(
+                    id=produto_id,
+                    is_active=True,
+                    parametros_por_empresa__empresa=empresa_at,
+                    parametros_por_empresa__ativo_nessa_empresa=True,
+                )
+                .first()
+            )
+            if not produto:
                 return JsonResponse({'erro': f'Produto {produto_id} não encontrado'}, status=404)
-            
-            preco_unitario = Decimal(str(item.get('preco_unitario', produto.preco_venda_sugerido)))
+
+            preco_unitario = Decimal(str(item.get('preco_unitario', 0)))
+            if preco_unitario == 0:
+                pv = preco_venda_para_empresa(produto, loja.empresa)
+                if pv is None:
+                    return JsonResponse({
+                        'erro': f'Produto {produto.codigo_interno} sem preço para a empresa da loja.',
+                    }, status=400)
+                preco_unitario = pv
             desconto = Decimal(str(item.get('desconto', 0)))
             
             itens_validos.append({
@@ -406,12 +441,12 @@ def finalizar_venda(request):
         if tipo_pagamento not in tipos_validos:
             return JsonResponse({'erro': 'Tipo de pagamento inválido'}, status=400)
         
-        # Busca loja
+        empresa_at = get_empresa_ativa(request)
         try:
-            loja = Loja.objects.get(id=loja_id, is_active=True)
+            loja = Loja.objects.get(id=loja_id, empresa=empresa_at, is_active=True)
         except Loja.DoesNotExist:
             return JsonResponse({'erro': 'Loja não encontrada'}, status=404)
-        
+
         # Verifica se há caixa aberto
         caixa_sessao = CaixaSessao.objects.filter(
             loja=loja,
@@ -428,36 +463,47 @@ def finalizar_venda(request):
         cliente = None
         if cliente_id:
             try:
-                cliente = Cliente.objects.get(id=cliente_id, is_active=True)
+                cliente = Cliente.objects.get(
+                    id=cliente_id,
+                    empresa=empresa_at,
+                    is_active=True,
+                )
             except Cliente.DoesNotExist:
                 # Cliente não encontrado, mas não é obrigatório para balcão
                 logger.warning(f"Cliente {cliente_id} não encontrado, continuando sem cliente")
-        
+
         # Local de estoque (opcional)
         local_estoque = None
         if local_estoque_id:
             try:
                 from estoque.models import LocalEstoque
                 local_estoque = LocalEstoque.objects.get(id=local_estoque_id, loja=loja, is_active=True)
-            except:
+            except Exception:
                 logger.warning(f"Local de estoque {local_estoque_id} não encontrado, usando padrão")
-        
+
         # Valida itens e verifica produtos com restrição
         itens_validos = []
         produtos_com_restricao = []
-        
+
         for item in itens:
             produto_id = item.get('produto_id')
             quantidade = item.get('quantidade')
-            
+
             if not produto_id or not quantidade:
                 return JsonResponse({'erro': 'Item inválido: produto_id e quantidade são obrigatórios'}, status=400)
-            
-            try:
-                produto = Produto.objects.get(id=produto_id, is_active=True)
-            except Produto.DoesNotExist:
+
+            produto = (
+                Produto.objects.filter(
+                    id=produto_id,
+                    is_active=True,
+                    parametros_por_empresa__empresa=empresa_at,
+                    parametros_por_empresa__ativo_nessa_empresa=True,
+                )
+                .first()
+            )
+            if not produto:
                 return JsonResponse({'erro': f'Produto {produto_id} não encontrado'}, status=404)
-            
+
             # Verifica se produto tem restrição
             if produto.possui_restricao_exercito:
                 produtos_com_restricao.append({
@@ -556,7 +602,13 @@ def finalizar_venda(request):
                 from vendas.models import ItemPedidoVenda
                 for produto_restricao in produtos_com_restricao:
                     try:
-                        produto = Produto.objects.get(id=produto_restricao['produto_id'])
+                        produto = Produto.objects.filter(
+                            id=produto_restricao['produto_id'],
+                            parametros_por_empresa__empresa=empresa_at,
+                            parametros_por_empresa__ativo_nessa_empresa=True,
+                        ).first()
+                        if not produto:
+                            continue
                         item_pedido = ItemPedidoVenda.objects.filter(
                             pedido=pedido,
                             produto=produto,
@@ -617,9 +669,11 @@ def cupom_fiscal(request, pedido_id: int):
     Exibe o cupom fiscal (tela de impressão) para um pedido.
     Usado pelo fluxo do PDV Tablet -> Balcão (window.open em nova aba).
     """
+    empresa = get_empresa_ativa(request)
     pedido = get_object_or_404(
         PedidoVenda.objects.select_related('loja', 'loja__empresa', 'cliente', 'vendedor'),
         id=pedido_id,
+        loja__empresa=empresa,
         is_active=True,
     )
     itens = pedido.itens.filter(is_active=True).select_related('produto')
@@ -651,9 +705,11 @@ def cupom_fiscal_pdf(request, pedido_id: int):
             status=500,
         )
 
+    empresa = get_empresa_ativa(request)
     pedido = get_object_or_404(
         PedidoVenda.objects.select_related('loja', 'loja__empresa', 'cliente', 'vendedor'),
         id=pedido_id,
+        loja__empresa=empresa,
         is_active=True,
     )
     itens = pedido.itens.filter(is_active=True).select_related('produto')

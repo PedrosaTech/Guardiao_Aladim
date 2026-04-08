@@ -15,6 +15,7 @@ from decimal import Decimal
 from .models import NotaFiscalSaida, NotaFiscalEntrada, ItemNotaFiscalEntrada, ConfiguracaoFiscalLoja, AlertaNotaFiscal
 from .forms import NotaFiscalEntradaForm, ItemNotaFiscalEntradaFormSet
 from .import_nfe import parse_nfe_xml
+from core.tenant import get_empresa_ativa
 
 try:
     from weasyprint import HTML
@@ -28,7 +29,11 @@ def lista_notas_saida(request):
     """
     Lista de notas fiscais de saída (NF-e e NFC-e).
     """
-    notas = NotaFiscalSaida.objects.filter(is_active=True).select_related(
+    empresa = get_empresa_ativa(request)
+    notas = NotaFiscalSaida.objects.filter(
+        is_active=True,
+        loja__empresa=empresa,
+    ).select_related(
         'loja', 'cliente', 'pedido_venda', 'evento'
     )
     
@@ -47,11 +52,11 @@ def lista_notas_saida(request):
     if status_filter:
         notas = notas.filter(status=status_filter)
     if loja_filter:
-        notas = notas.filter(loja_id=loja_filter)
+        notas = notas.filter(loja_id=loja_filter, loja__empresa=empresa)
     if cliente_filter:
-        notas = notas.filter(cliente_id=cliente_filter)
+        notas = notas.filter(cliente_id=cliente_filter, cliente__empresa=empresa)
     if evento_filter:
-        notas = notas.filter(evento_id=evento_filter)
+        notas = notas.filter(evento_id=evento_filter, evento__loja__empresa=empresa)
     if data_inicio:
         try:
             data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
@@ -79,9 +84,9 @@ def lista_notas_saida(request):
     from pessoas.models import Cliente
     from eventos.models import EventoVenda
     
-    lojas = Loja.objects.filter(is_active=True)
-    clientes = Cliente.objects.filter(is_active=True)
-    eventos = EventoVenda.objects.filter(is_active=True)
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
+    clientes = Cliente.objects.filter(empresa=empresa, is_active=True)
+    eventos = EventoVenda.objects.filter(loja__empresa=empresa, is_active=True)
     
     # Estatísticas
     total_valor = notas.aggregate(Sum('valor_total'))['valor_total__sum'] or 0
@@ -114,11 +119,13 @@ def detalhes_nota_saida(request, nota_id):
     """
     Detalhes completos da nota fiscal de saída.
     """
+    empresa = get_empresa_ativa(request)
     nota = get_object_or_404(
         NotaFiscalSaida.objects.select_related(
             'loja', 'cliente', 'pedido_venda', 'evento'
         ),
         id=nota_id,
+        loja__empresa=empresa,
         is_active=True
     )
     
@@ -200,7 +207,11 @@ def lista_notas_entrada(request):
     """
     Lista de notas fiscais de entrada.
     """
-    notas = NotaFiscalEntrada.objects.filter(is_active=True).select_related(
+    empresa = get_empresa_ativa(request)
+    notas = NotaFiscalEntrada.objects.filter(
+        is_active=True,
+        loja__empresa=empresa,
+    ).select_related(
         'loja', 'fornecedor'
     )
     
@@ -212,9 +223,9 @@ def lista_notas_entrada(request):
     search = request.GET.get('search')
     
     if loja_filter:
-        notas = notas.filter(loja_id=loja_filter)
+        notas = notas.filter(loja_id=loja_filter, loja__empresa=empresa)
     if fornecedor_filter:
-        notas = notas.filter(fornecedor_id=fornecedor_filter)
+        notas = notas.filter(fornecedor_id=fornecedor_filter, fornecedor__empresa=empresa)
     if data_inicio:
         try:
             data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
@@ -241,13 +252,13 @@ def lista_notas_entrada(request):
     from core.models import Loja
     from pessoas.models import Fornecedor
     
-    lojas = Loja.objects.filter(is_active=True)
-    fornecedores = Fornecedor.objects.filter(is_active=True)
-    
+    lojas = Loja.objects.filter(empresa=empresa, is_active=True)
+    fornecedores = Fornecedor.objects.filter(empresa=empresa, is_active=True)
+
     # Estatísticas
     total_valor = notas.aggregate(Sum('valor_total'))['valor_total__sum'] or 0
     total_notas = notas.count()
-    
+
     context = {
         'notas': notas,
         'lojas': lojas,
@@ -272,11 +283,13 @@ def detalhes_nota_entrada(request, nota_id):
     Detalhes completos da nota fiscal de entrada.
     Exibe itens, botão "Dar entrada em estoque" e aviso de itens não vinculados.
     """
+    empresa = get_empresa_ativa(request)
     nota = get_object_or_404(
         NotaFiscalEntrada.objects.select_related(
             'loja', 'fornecedor'
         ).prefetch_related('itens__produto', 'historico_entrada_estoque'),
         id=nota_id,
+        loja__empresa=empresa,
         is_active=True
     )
 
@@ -308,7 +321,13 @@ def dar_entrada_estoque_nota_view(request, nota_id):
     """
     Processa a entrada em estoque para os itens vinculados da nota.
     """
-    nota = get_object_or_404(NotaFiscalEntrada, id=nota_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    nota = get_object_or_404(
+        NotaFiscalEntrada,
+        id=nota_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     local_id = request.POST.get('local_estoque')
     if not local_id:
         messages.error(request, 'Selecione o local de estoque.')
@@ -350,21 +369,26 @@ def criar_nota_entrada(request):
     from core.models import Loja
     from pessoas.models import Fornecedor
 
+    empresa = get_empresa_ativa(request)
     loja_para_formset = None
     if request.method == 'POST':
         loja_id = request.POST.get('loja')
         if loja_id:
             try:
-                loja_para_formset = Loja.objects.get(id=loja_id, is_active=True)
+                loja_para_formset = Loja.objects.get(
+                    id=loja_id,
+                    empresa=empresa,
+                    is_active=True,
+                )
             except Loja.DoesNotExist:
                 pass
     if loja_para_formset is None:
-        loja_para_formset = Loja.objects.filter(is_active=True).first()
+        loja_para_formset = Loja.objects.filter(empresa=empresa, is_active=True).first()
 
     formset = ItemNotaFiscalEntradaFormSet(loja=loja_para_formset)
 
     if request.method == 'POST':
-        form = NotaFiscalEntradaForm(request.POST)
+        form = NotaFiscalEntradaForm(request.POST, empresa=empresa)
         formset = ItemNotaFiscalEntradaFormSet(request.POST, loja=loja_para_formset)
 
         if form.is_valid() and formset.is_valid():
@@ -410,13 +434,13 @@ def criar_nota_entrada(request):
             else:
                 messages.error(request, 'Corrija os erros nos itens.')
     else:
-        form = NotaFiscalEntradaForm()
+        form = NotaFiscalEntradaForm(empresa=empresa)
 
     context = {
         'form': form,
         'formset': formset,
-        'lojas': Loja.objects.filter(is_active=True),
-        'fornecedores': Fornecedor.objects.filter(is_active=True),
+        'lojas': Loja.objects.filter(empresa=empresa, is_active=True),
+        'fornecedores': Fornecedor.objects.filter(empresa=empresa, is_active=True),
     }
     return render(request, 'fiscal/nota_entrada_form.html', context)
 
@@ -461,8 +485,11 @@ def importar_nota_entrada_xml(request):
                 messages.error(request, 'Selecione a loja e o fornecedor.')
                 return redirect('fiscal:importar_nota_entrada_confirmar')
 
-            loja = get_object_or_404(Loja, id=loja_id, is_active=True)
-            fornecedor = get_object_or_404(Fornecedor, id=fornecedor_id, is_active=True)
+            empresa = get_empresa_ativa(request)
+            loja = get_object_or_404(Loja, id=loja_id, empresa=empresa, is_active=True)
+            fornecedor = get_object_or_404(
+                Fornecedor, id=fornecedor_id, empresa=empresa, is_active=True
+            )
 
             data_emi = dados.get('data_emissao')
             if isinstance(data_emi, str):
@@ -494,9 +521,15 @@ def importar_nota_entrada_xml(request):
                 if produto_id:
                     try:
                         from produtos.models import Produto
-                        produto = Produto.objects.get(id=produto_id, is_active=True)
+                        produto = get_object_or_404(
+                            Produto,
+                            id=produto_id,
+                            is_active=True,
+                            parametros_por_empresa__empresa=loja.empresa,
+                            parametros_por_empresa__ativo_nessa_empresa=True,
+                        )
                         status = 'VINCULADO'
-                    except (ValueError, Produto.DoesNotExist):
+                    except (ValueError, Http404):
                         pass
 
                 ItemNotaFiscalEntrada.objects.create(
@@ -597,8 +630,13 @@ def importar_nota_entrada_confirmar(request):
         return redirect('fiscal:importar_nota_entrada_xml')
 
     # Matching de produtos para cada item
-    primeira_loja = Loja.objects.filter(is_active=True).select_related('empresa').first()
-    empresa = primeira_loja.empresa if primeira_loja else None
+    empresa_sessao = get_empresa_ativa(request)
+    primeira_loja = (
+        Loja.objects.filter(empresa=empresa_sessao, is_active=True)
+        .select_related('empresa')
+        .first()
+    )
+    empresa = empresa_sessao
     fornecedor_match = None  # Será definido quando usuário selecionar
 
     itens = dados.get('itens', [])
@@ -621,13 +659,21 @@ def importar_nota_entrada_confirmar(request):
         dados['data_emissao'] = datetime.now().date()
 
     from produtos.models import Produto
-    produtos = Produto.objects.filter(is_active=True).order_by('descricao')
+    produtos = (
+        Produto.objects.filter(
+            is_active=True,
+            parametros_por_empresa__empresa=empresa_sessao,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        )
+        .distinct()
+        .order_by('descricao')
+    )
 
     context = {
         'dados': dados,
         'itens': itens,
-        'lojas': Loja.objects.filter(is_active=True),
-        'fornecedores': Fornecedor.objects.filter(is_active=True),
+        'lojas': Loja.objects.filter(empresa=empresa_sessao, is_active=True),
+        'fornecedores': Fornecedor.objects.filter(empresa=empresa_sessao, is_active=True),
         'produtos': produtos,
     }
     return render(request, 'fiscal/importar_nota_xml_confirmar.html', context)
@@ -638,8 +684,10 @@ def lista_alertas_sefaz(request):
     """
     Lista de alertas de notas fiscais da SEFAZ-BA.
     """
+    empresa = get_empresa_ativa(request)
     alertas = AlertaNotaFiscal.objects.filter(
-        is_active=True
+        is_active=True,
+        loja__empresa=empresa,
     ).select_related('loja', 'nota_fiscal_entrada').order_by('-data_consulta_sefaz')
 
     status_filter = request.GET.get('status')
@@ -668,7 +716,13 @@ def imprimir_nfe_pdf(request, nota_id):
             status=500
         )
     
-    nota = get_object_or_404(NotaFiscalSaida, id=nota_id, is_active=True)
+    empresa = get_empresa_ativa(request)
+    nota = get_object_or_404(
+        NotaFiscalSaida,
+        id=nota_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
     
     # Buscar dados relacionados
     pedido = nota.pedido_venda

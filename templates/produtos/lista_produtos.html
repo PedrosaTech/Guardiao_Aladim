@@ -251,7 +251,13 @@
                             {% endif %}
                         </td>
                         <td>{{ produto.ncm|default:"-" }}</td>
-                        <td class="text-right">R$ {{ produto.preco_venda_sugerido|floatformat:2 }}</td>
+                        <td class="text-right">
+                            {% if produto.preco_lista is not None %}
+                                R$ {{ produto.preco_lista|floatformat:2 }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
                         <td class="text-center">
                             {% if produto.possui_restricao_exercito %}
                             <span class="badge badge-restricao">⚠️ Sim</span>

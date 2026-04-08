@@ -46,30 +46,37 @@ class TituloReceberForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
+        empresa_ativa = kwargs.pop('empresa_ativa', None)
         super().__init__(*args, **kwargs)
-        
-        # Filtra empresas ativas
-        self.fields['empresa'].queryset = Empresa.objects.filter(is_active=True)
-        
-        # Se empresa selecionada, filtra lojas dessa empresa
-        if self.instance and self.instance.pk and self.instance.empresa:
+
+        emp_ref = None
+        if empresa_ativa:
+            emp_ref = empresa_ativa
+        elif self.instance and self.instance.pk and self.instance.empresa_id:
+            emp_ref = self.instance.empresa
+
+        if emp_ref:
+            self.fields['empresa'].queryset = Empresa.objects.filter(pk=emp_ref.pk)
+            if not self.instance.pk:
+                self.fields['empresa'].initial = emp_ref.pk
             self.fields['loja'].queryset = Loja.objects.filter(
-                empresa=self.instance.empresa,
-                is_active=True
+                empresa=emp_ref,
+                is_active=True,
             )
             self.fields['cliente'].queryset = Cliente.objects.filter(
-                empresa=self.instance.empresa,
-                is_active=True
+                empresa=emp_ref,
+                is_active=True,
             )
             self.fields['conta_financeira'].queryset = ContaFinanceira.objects.filter(
-                empresa=self.instance.empresa,
-                is_active=True
+                empresa=emp_ref,
+                is_active=True,
             )
         else:
+            self.fields['empresa'].queryset = Empresa.objects.filter(is_active=True)
             self.fields['loja'].queryset = Loja.objects.none()
             self.fields['cliente'].queryset = Cliente.objects.none()
             self.fields['conta_financeira'].queryset = ContaFinanceira.objects.none()
-        
+
         # Valores padrão
         if not self.instance.pk:
             self.fields['data_emissao'].initial = date.today()
@@ -124,23 +131,32 @@ class TituloPagarForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
+        empresa_ativa = kwargs.pop('empresa_ativa', None)
         super().__init__(*args, **kwargs)
-        
-        self.fields['empresa'].queryset = Empresa.objects.filter(is_active=True)
-        
-        if self.instance and self.instance.pk and self.instance.empresa:
+
+        emp_ref = None
+        if empresa_ativa:
+            emp_ref = empresa_ativa
+        elif self.instance and self.instance.pk and self.instance.empresa_id:
+            emp_ref = self.instance.empresa
+
+        if emp_ref:
+            self.fields['empresa'].queryset = Empresa.objects.filter(pk=emp_ref.pk)
+            if not self.instance.pk:
+                self.fields['empresa'].initial = emp_ref.pk
             self.fields['loja'].queryset = Loja.objects.filter(
-                empresa=self.instance.empresa,
-                is_active=True
+                empresa=emp_ref,
+                is_active=True,
             )
             self.fields['fornecedor'].queryset = Fornecedor.objects.filter(
-                empresa=self.instance.empresa,
-                is_active=True
+                empresa=emp_ref,
+                is_active=True,
             )
         else:
+            self.fields['empresa'].queryset = Empresa.objects.filter(is_active=True)
             self.fields['loja'].queryset = Loja.objects.none()
             self.fields['fornecedor'].queryset = Fornecedor.objects.none()
-        
+
         if not self.instance.pk:
             self.fields['data_emissao'].initial = date.today()
             self.fields['status'].initial = 'ABERTO'
@@ -361,7 +377,7 @@ class BaixaTituloPagarForm(forms.Form):
 
 class FiltroTitulosForm(forms.Form):
     """Form para filtros de títulos."""
-    
+
     status = forms.ChoiceField(
         label='Status',
         required=False,
@@ -397,16 +413,24 @@ class FiltroTitulosForm(forms.Form):
             'class': 'form-control',
         }),
     )
-    
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa is not None:
+            self.fields['cliente'].queryset = Cliente.objects.filter(
+                empresa=empresa,
+                is_active=True,
+            )
+
     def clean(self):
         """Valida que data início é menor que data fim."""
         cleaned_data = super().clean()
         data_inicio = cleaned_data.get('data_inicio')
         data_fim = cleaned_data.get('data_fim')
-        
+
         if data_inicio and data_fim and data_inicio > data_fim:
             raise ValidationError('Data início deve ser menor que data fim.')
-        
+
         return cleaned_data
 
 
@@ -448,15 +472,23 @@ class FiltroTitulosPagarForm(forms.Form):
             'class': 'form-control',
         }),
     )
-    
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if empresa is not None:
+            self.fields['fornecedor'].queryset = Fornecedor.objects.filter(
+                empresa=empresa,
+                is_active=True,
+            )
+
     def clean(self):
         cleaned_data = super().clean()
         data_inicio = cleaned_data.get('data_inicio')
         data_fim = cleaned_data.get('data_fim')
-        
+
         if data_inicio and data_fim and data_inicio > data_fim:
             raise ValidationError('Data início deve ser menor que data fim.')
-        
+
         return cleaned_data
 
 

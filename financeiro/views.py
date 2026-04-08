@@ -21,7 +21,7 @@ from .forms import (
     FiltroTitulosForm, FiltroTitulosPagarForm, FiltroFluxoCaixaForm
 )
 from .services.financial_service import FinancialService
-
+from core.tenant import get_empresa_ativa
 
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
@@ -34,63 +34,73 @@ class DashboardFinanceiroView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+        empresa = get_empresa_ativa(self.request)
+
         hoje = date.today()
         proximos_30_dias = hoje + timedelta(days=30)
-        
+
         # Títulos a receber
         a_receber_vencido = TituloReceber.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento__lt=hoje,
             is_active=True
         ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        
+
         a_receber_hoje = TituloReceber.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento=hoje,
             is_active=True
         ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        
+
         a_receber_30_dias = TituloReceber.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento__gte=hoje,
             data_vencimento__lte=proximos_30_dias,
             is_active=True
         ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        
+
         # Títulos a pagar
         a_pagar_vencido = TituloPagar.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento__lt=hoje,
             is_active=True
         ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        
+
         a_pagar_hoje = TituloPagar.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento=hoje,
             is_active=True
         ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
-        
+
         # Saldo das contas
-        contas = ContaFinanceira.objects.filter(is_active=True)
+        contas = ContaFinanceira.objects.filter(empresa=empresa, is_active=True)
         saldo_contas = {}
         for conta in contas:
             saldo_contas[conta.nome] = FinancialService.get_saldo_atual(conta)
-        
-        saldo_total = FinancialService.get_saldo_atual()
-        
+
+        saldo_total = FinancialService.get_saldo_atual(empresa=empresa)
+
         # Fluxo de caixa últimos 7 dias (para gráfico)
         data_inicio_grafico = hoje - timedelta(days=7)
-        fluxo_7_dias = FinancialService.calcular_fluxo_caixa(data_inicio_grafico, hoje)
-        
+        fluxo_7_dias = FinancialService.calcular_fluxo_caixa(
+            data_inicio_grafico, hoje, empresa=empresa
+        )
+
         # Próximos vencimentos (10 primeiros)
         proximos_vencimentos_receber = TituloReceber.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento__gte=hoje,
             is_active=True
         ).select_related('cliente').order_by('data_vencimento')[:10]
-        
+
         proximos_vencimentos_pagar = TituloPagar.objects.filter(
+            empresa=empresa,
             status='ABERTO',
             data_vencimento__gte=hoje,
             is_active=True
@@ -130,13 +140,15 @@ class TituloReceberCreateView(CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
+        kwargs['empresa_ativa'] = get_empresa_ativa(self.request)
         return kwargs
-    
+
     def form_valid(self, form):
+        form.instance.empresa = get_empresa_ativa(self.request)
         form.instance.created_by = self.request.user
         messages.success(self.request, f'Título a receber #{form.instance.id} criado com sucesso!')
         return super().form_valid(form)
-    
+
     def get_success_url(self):
         return reverse_lazy('financeiro:titulo_receber_detail', kwargs={'pk': self.object.pk})
 
@@ -149,13 +161,15 @@ class TituloReceberUpdateView(UpdateView):
     template_name = 'financeiro/titulo_receber_form.html'
     
     def get_queryset(self):
-        return TituloReceber.objects.filter(is_active=True)
-    
+        empresa = get_empresa_ativa(self.request)
+        return TituloReceber.objects.filter(is_active=True, empresa=empresa)
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
+        kwargs['empresa_ativa'] = get_empresa_ativa(self.request)
         return kwargs
-    
+
     def form_valid(self, form):
         if form.instance.status == 'PAGO':
             messages.error(self.request, 'Não é possível editar título já recebido.')
@@ -163,11 +177,12 @@ class TituloReceberUpdateView(UpdateView):
         form.instance.updated_by = self.request.user
         messages.success(self.request, 'Título atualizado com sucesso!')
         return super().form_valid(form)
-    
+
     def get_success_url(self):
         return reverse_lazy('financeiro:titulo_receber_detail', kwargs={'pk': self.object.pk})
 
 
+@method_decorator(login_required, name='dispatch')
 class TituloReceberListView(ListView):
     """Lista de títulos a receber."""
     model = TituloReceber
@@ -177,12 +192,16 @@ class TituloReceberListView(ListView):
     ordering = ['-data_vencimento']
     
     def get_queryset(self):
-        queryset = TituloReceber.objects.filter(is_active=True).select_related(
+        empresa = get_empresa_ativa(self.request)
+        queryset = TituloReceber.objects.filter(
+            empresa=empresa,
+            is_active=True,
+        ).select_related(
             'cliente', 'loja', 'conta_financeira'
         )
-        
+
         # Aplica filtros do form
-        form = FiltroTitulosForm(self.request.GET)
+        form = FiltroTitulosForm(self.request.GET, empresa=empresa)
         if form.is_valid():
             status = form.cleaned_data.get('status')
             cliente = form.cleaned_data.get('cliente')
@@ -202,8 +221,11 @@ class TituloReceberListView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_filtro'] = FiltroTitulosForm(self.request.GET)
-        
+        context['form_filtro'] = FiltroTitulosForm(
+            self.request.GET,
+            empresa=get_empresa_ativa(self.request),
+        )
+
         # Totalizadores
         queryset = self.get_queryset()
         context['total_aberto'] = queryset.filter(status='ABERTO').aggregate(
@@ -225,7 +247,11 @@ class TituloReceberDetailView(DetailView):
     context_object_name = 'titulo'
     
     def get_queryset(self):
-        return TituloReceber.objects.filter(is_active=True).select_related(
+        empresa = get_empresa_ativa(self.request)
+        return TituloReceber.objects.filter(
+            empresa=empresa,
+            is_active=True,
+        ).select_related(
             'cliente', 'loja', 'pedido_venda', 'conta_financeira'
         )
     
@@ -247,7 +273,8 @@ class TituloReceberDetailView(DetailView):
 @login_required
 def baixar_titulo_receber(request, pk):
     """View para baixar título a receber."""
-    titulo = get_object_or_404(TituloReceber, pk=pk, is_active=True)
+    empresa = get_empresa_ativa(request)
+    titulo = get_object_or_404(TituloReceber, pk=pk, empresa=empresa, is_active=True)
     
     if titulo.status == 'PAGO':
         messages.error(request, 'Este título já foi recebido.')
@@ -288,7 +315,6 @@ def baixar_titulo_receber(request, pk):
 
 
 @method_decorator(login_required, name='dispatch')
-@method_decorator(login_required, name='dispatch')
 class TituloPagarCreateView(CreateView):
     """Criar título a pagar."""
     model = TituloPagar
@@ -298,13 +324,15 @@ class TituloPagarCreateView(CreateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
+        kwargs['empresa_ativa'] = get_empresa_ativa(self.request)
         return kwargs
-    
+
     def form_valid(self, form):
+        form.instance.empresa = get_empresa_ativa(self.request)
         form.instance.created_by = self.request.user
         messages.success(self.request, f'Título a pagar #{form.instance.id} criado com sucesso!')
         return super().form_valid(form)
-    
+
     def get_success_url(self):
         return reverse_lazy('financeiro:titulo_pagar_detail', kwargs={'pk': self.object.pk})
 
@@ -317,13 +345,15 @@ class TituloPagarUpdateView(UpdateView):
     template_name = 'financeiro/titulo_pagar_form.html'
     
     def get_queryset(self):
-        return TituloPagar.objects.filter(is_active=True)
-    
+        empresa = get_empresa_ativa(self.request)
+        return TituloPagar.objects.filter(is_active=True, empresa=empresa)
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
+        kwargs['empresa_ativa'] = get_empresa_ativa(self.request)
         return kwargs
-    
+
     def form_valid(self, form):
         if form.instance.status == 'PAGO':
             messages.error(self.request, 'Não é possível editar título já pago.')
@@ -331,11 +361,12 @@ class TituloPagarUpdateView(UpdateView):
         form.instance.updated_by = self.request.user
         messages.success(self.request, 'Título atualizado com sucesso!')
         return super().form_valid(form)
-    
+
     def get_success_url(self):
         return reverse_lazy('financeiro:titulo_pagar_detail', kwargs={'pk': self.object.pk})
 
 
+@method_decorator(login_required, name='dispatch')
 class TituloPagarListView(ListView):
     """Lista de títulos a pagar."""
     model = TituloPagar
@@ -345,11 +376,15 @@ class TituloPagarListView(ListView):
     ordering = ['-data_vencimento']
     
     def get_queryset(self):
-        queryset = TituloPagar.objects.filter(is_active=True).select_related(
+        empresa = get_empresa_ativa(self.request)
+        queryset = TituloPagar.objects.filter(
+            empresa=empresa,
+            is_active=True,
+        ).select_related(
             'fornecedor', 'loja'
         )
-        
-        form = FiltroTitulosPagarForm(self.request.GET)
+
+        form = FiltroTitulosPagarForm(self.request.GET, empresa=empresa)
         if form.is_valid():
             status = form.cleaned_data.get('status')
             fornecedor = form.cleaned_data.get('fornecedor')
@@ -369,8 +404,11 @@ class TituloPagarListView(ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_filtro'] = FiltroTitulosPagarForm(self.request.GET)
-        
+        context['form_filtro'] = FiltroTitulosPagarForm(
+            self.request.GET,
+            empresa=get_empresa_ativa(self.request),
+        )
+
         queryset = self.get_queryset()
         context['total_aberto'] = queryset.filter(status='ABERTO').aggregate(
             total=Sum('valor')
@@ -387,7 +425,11 @@ class TituloPagarDetailView(DetailView):
     context_object_name = 'titulo'
     
     def get_queryset(self):
-        return TituloPagar.objects.filter(is_active=True).select_related(
+        empresa = get_empresa_ativa(self.request)
+        return TituloPagar.objects.filter(
+            empresa=empresa,
+            is_active=True,
+        ).select_related(
             'fornecedor', 'loja'
         )
     
@@ -408,7 +450,8 @@ class TituloPagarDetailView(DetailView):
 @login_required
 def baixar_titulo_pagar(request, pk):
     """View para baixar título a pagar."""
-    titulo = get_object_or_404(TituloPagar, pk=pk, is_active=True)
+    empresa = get_empresa_ativa(request)
+    titulo = get_object_or_404(TituloPagar, pk=pk, empresa=empresa, is_active=True)
     
     if titulo.status == 'PAGO':
         messages.error(request, 'Este título já foi pago.')
@@ -464,10 +507,8 @@ class RelatorioFluxoCaixaView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Busca primeira empresa (pode melhorar depois)
-        from core.models import Empresa
-        empresa = Empresa.objects.filter(is_active=True).first()
-        
+        empresa = get_empresa_ativa(self.request)
+
         form = FiltroFluxoCaixaForm(self.request.GET, empresa=empresa)
         context['form'] = form
         
@@ -476,7 +517,12 @@ class RelatorioFluxoCaixaView(TemplateView):
             data_fim = form.cleaned_data['data_fim']
             conta_financeira = form.cleaned_data.get('conta_financeira')
             
-            fluxo = FinancialService.calcular_fluxo_caixa(data_inicio, data_fim, conta_financeira)
+            fluxo = FinancialService.calcular_fluxo_caixa(
+                data_inicio,
+                data_fim,
+                conta_financeira,
+                empresa=empresa,
+            )
             
             context['fluxo'] = fluxo
             context['fluxo_json'] = json.dumps([

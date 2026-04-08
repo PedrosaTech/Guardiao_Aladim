@@ -5,10 +5,12 @@ from django.urls import path
 
 from . import cadastro_views
 from . import guia_views
+from . import views
 
 app_name = "core"
 
 urlpatterns = [
+    path("trocar-empresa/", views.trocar_empresa, name="trocar_empresa"),
     path("empresas/", cadastro_views.lista_empresas, name="lista_empresas"),
     path("empresas/nova/", cadastro_views.criar_empresa, name="criar_empresa"),
     path("empresas/<int:pk>/editar/", cadastro_views.editar_empresa, name="editar_empresa"),
