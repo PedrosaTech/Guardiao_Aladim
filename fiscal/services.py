@@ -156,3 +156,80 @@ def criar_nfe_rascunho_para_pedido(pedido: PedidoVenda, usuario=None) -> NotaFis
     )
 
     return nota
+
+
+def gerar_xml_nfe_para_nota(nota_id: int, usuario=None):
+    """
+    Gera e salva o XML assinado de uma NotaFiscalSaida em RASCUNHO.
+    """
+    from .nfe_xml import gerar_xml_nfe, salvar_xml_na_nota
+
+    nota = NotaFiscalSaida.objects.select_related(
+        'loja', 'loja__empresa', 'loja__configuracao_fiscal',
+        'cliente', 'pedido_venda',
+    ).get(pk=nota_id)
+
+    if nota.status not in ('RASCUNHO',):
+        raise ValidationError(
+            f"Nota #{nota_id} está com status '{nota.status}'. "
+            "Só é possível gerar XML de notas em RASCUNHO."
+        )
+
+    xml_assinado = gerar_xml_nfe(nota)
+    salvar_xml_na_nota(nota, xml_assinado)
+
+    logger.info(
+        f"XML gerado para nota {nota.numero}/{nota.serie} (pedido={nota.pedido_venda_id})"
+    )
+    return nota
+
+
+def autorizar_nfe(nota_id: int, usuario=None):
+    """
+    Envia NF-e para a SEFAZ (modo síncrono) e atualiza a nota conforme o retorno.
+    """
+    from .nfe_autorizacao import enviar_nfe_para_autorizacao
+
+    nota = NotaFiscalSaida.objects.select_related(
+        'loja', 'loja__configuracao_fiscal',
+        'cliente', 'pedido_venda',
+    ).get(pk=nota_id)
+
+    if nota.status != 'EM_PROCESSAMENTO':
+        raise ValidationError(
+            f"Nota #{nota_id} está com status '{nota.status}'. "
+            'Envie apenas notas com status EM_PROCESSAMENTO.'
+        )
+
+    resultado = enviar_nfe_para_autorizacao(nota)
+
+    if resultado['autorizada']:
+        nota.status = 'AUTORIZADA'
+        nota.chave_acesso = resultado['chNFe'] or nota.chave_acesso
+        nota.xml_arquivo = resultado['xml_proc']
+        nota.motivo_cancelamento = ''
+        nota.save(update_fields=[
+            'status', 'chave_acesso', 'xml_arquivo', 'motivo_cancelamento', 'updated_at',
+        ])
+        try:
+            if nota.pedido_venda_id:
+                nota.gravar_snapshot_impostos()
+        except Exception as exc:
+            logger.warning('Erro ao gravar snapshot de impostos nota %s: %s', nota_id, exc)
+
+        logger.info(
+            'NF-e AUTORIZADA: %s/%s chave=%s prot=%s',
+            nota.numero, nota.serie,
+            resultado['chNFe'], resultado['nProt'],
+        )
+    else:
+        msg = f"cStat {resultado['cStat']}: {resultado['xMotivo']}"
+        nota.status = 'REJEITADA'
+        nota.motivo_cancelamento = msg[:2000]
+        nota.save(update_fields=['status', 'motivo_cancelamento', 'updated_at'])
+        logger.warning(
+            'NF-e REJEITADA: %s/%s %s',
+            nota.numero, nota.serie, msg,
+        )
+
+    return resultado

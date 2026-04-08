@@ -23,6 +23,13 @@ class Empresa(BaseModel):
     complemento = models.CharField('Complemento', max_length=100, blank=True, null=True)
     bairro = models.CharField('Bairro', max_length=100, blank=True, null=True)
     cidade = models.CharField('Cidade', max_length=100, blank=True, null=True)
+    codigo_ibge_municipio = models.CharField(
+        'Código IBGE do Município',
+        max_length=7,
+        blank=True,
+        null=True,
+        help_text='7 dígitos. Ex: 2927408 (Salvador-BA). Obrigatório para emissão de NF-e.',
+    )
     uf = models.CharField('UF', max_length=2, blank=True, null=True)
     cep = models.CharField('CEP', max_length=10, blank=True, null=True)
     
@@ -57,6 +64,13 @@ class Loja(BaseModel):
     complemento = models.CharField('Complemento', max_length=100, blank=True, null=True)
     bairro = models.CharField('Bairro', max_length=100, blank=True, null=True)
     cidade = models.CharField('Cidade', max_length=100, blank=True, null=True)
+    codigo_ibge_municipio = models.CharField(
+        'Código IBGE do Município',
+        max_length=7,
+        blank=True,
+        null=True,
+        help_text='7 dígitos. Ex: 2927408 (Salvador-BA). Obrigatório para emissão de NF-e.',
+    )
     uf = models.CharField('UF', max_length=2, blank=True, null=True)
     cep = models.CharField('CEP', max_length=10, blank=True, null=True)
     

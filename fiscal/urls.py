@@ -12,10 +12,13 @@ urlpatterns = [
     path('configuracao-fiscal/', config_loja_views.lista_config_fiscal, name='lista_config_fiscal'),
     path('configuracao-fiscal/nova/', config_loja_views.criar_config_fiscal, name='criar_config_fiscal'),
     path('configuracao-fiscal/<int:pk>/editar/', config_loja_views.editar_config_fiscal, name='editar_config_fiscal'),
+    path('loja/<int:loja_id>/testar-sefaz/', views.testar_status_sefaz, name='testar-status-sefaz'),
 
     # Notas Fiscais de Saída
     path('notas-saida/', views.lista_notas_saida, name='lista_notas_saida'),
     path('notas-saida/detalhes/<int:nota_id>/', views.detalhes_nota_saida, name='detalhes_nota_saida'),
+    path('nota/<int:nota_id>/gerar-xml/', views.gerar_xml_nota, name='gerar-xml-nota'),
+    path('nota/<int:nota_id>/autorizar/', views.autorizar_nota, name='autorizar-nota'),
     
     # Notas Fiscais de Entrada
     path('notas-entrada/', views.lista_notas_entrada, name='lista_notas_entrada'),

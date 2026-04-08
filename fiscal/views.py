@@ -1,9 +1,12 @@
 """
 Views do módulo fiscal.
 """
+import logging
+
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse, Http404, JsonResponse
 from django.template.loader import render_to_string
 from django.db.models import Q, Sum, Count
@@ -16,6 +19,9 @@ from .models import NotaFiscalSaida, NotaFiscalEntrada, ItemNotaFiscalEntrada, C
 from .forms import NotaFiscalEntradaForm, ItemNotaFiscalEntradaFormSet
 from .import_nfe import parse_nfe_xml
 from core.tenant import get_empresa_ativa
+from core.models import Loja
+
+logger = logging.getLogger(__name__)
 
 try:
     from weasyprint import HTML
@@ -200,6 +206,85 @@ def detalhes_nota_saida(request, nota_id):
     }
     
     return render(request, 'fiscal/detalhes_nota_saida.html', context)
+
+
+@login_required
+def gerar_xml_nota(request, nota_id):
+    """Gera XML assinado da NF-e (PyNFe) e salva na nota."""
+    from .services import gerar_xml_nfe_para_nota
+
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    empresa = get_empresa_ativa(request)
+    get_object_or_404(
+        NotaFiscalSaida,
+        pk=nota_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
+
+    try:
+        gerar_xml_nfe_para_nota(nota_id, usuario=request.user)
+        messages.success(
+            request,
+            'XML gerado com sucesso. A nota foi marcada como em processamento.',
+        )
+    except (ValueError, ValidationError) as exc:
+        messages.error(request, f'Erro ao gerar XML: {exc}')
+    except Exception as exc:
+        messages.error(request, f'Erro inesperado: {exc}')
+        logger.exception('Erro ao gerar XML da nota %s', nota_id)
+
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
+@login_required
+def autorizar_nota(request, nota_id):
+    """Envia NF-e com XML gerado para autorização na SEFAZ (síncrono)."""
+    from .services import autorizar_nfe
+
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    empresa = get_empresa_ativa(request)
+    nota = get_object_or_404(
+        NotaFiscalSaida,
+        pk=nota_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
+
+    if nota.status != 'EM_PROCESSAMENTO':
+        messages.warning(
+            request,
+            f"Nota {nota.numero}/{nota.serie} está com status “{nota.get_status_display()}”. "
+            'Gere o XML primeiro (nota em processamento).',
+        )
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    try:
+        resultado = autorizar_nfe(nota.id, usuario=request.user)
+        if resultado['autorizada']:
+            ch = resultado.get('chNFe') or ''
+            preview = (ch[:24] + '…') if len(ch) > 24 else ch
+            messages.success(
+                request,
+                f'NF-e {nota.numero}/{nota.serie} autorizada. Chave: {preview}',
+            )
+        else:
+            messages.error(
+                request,
+                f'NF-e {nota.numero}/{nota.serie} não autorizada '
+                f'(cStat {resultado["cStat"]}): {resultado["xMotivo"]}',
+            )
+    except (ValueError, ValidationError) as exc:
+        messages.error(request, str(exc))
+    except Exception as exc:
+        messages.error(request, f'Erro ao autorizar: {exc}')
+        logger.exception('Erro ao autorizar nota %s', nota_id)
+
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 @login_required
@@ -699,6 +784,44 @@ def lista_alertas_sefaz(request):
         'total_pendentes': alertas.filter(status='PENDENTE').count(),
     }
     return render(request, 'fiscal/lista_alertas_sefaz.html', context)
+
+
+@login_required
+def testar_status_sefaz(request, loja_id):
+    """
+    View de diagnostico para testar conexao com SEFAZ por loja.
+    """
+    from .nfe_status import consultar_status_servico_nfe
+
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    empresa = get_empresa_ativa(request)
+    loja = get_object_or_404(Loja, pk=loja_id, empresa=empresa, is_active=True)
+
+    try:
+        config = loja.configuracao_fiscal
+    except ConfiguracaoFiscalLoja.DoesNotExist:
+        messages.error(request, f"Loja {loja.nome} nao possui configuracao fiscal.")
+        return redirect('fiscal:lista_config_fiscal')
+
+    resultado = consultar_status_servico_nfe(config)
+    if resultado.get('ok'):
+        messages.success(
+            request,
+            "SEFAZ-BA respondeu: "
+            f"{resultado.get('xMotivo', '')} "
+            f"(cStat={resultado.get('cStat', '')}) - "
+            f"Ambiente: {resultado.get('ambiente', '')}"
+        )
+    else:
+        messages.error(
+            request,
+            "Falha na conexao SEFAZ-BA: "
+            f"{resultado.get('erro') or resultado.get('xMotivo', '')} - "
+            f"Ambiente: {resultado.get('ambiente', '')}"
+        )
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 @login_required

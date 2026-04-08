@@ -8,7 +8,9 @@ ViewSets para API do PDV Móvel.
 from decimal import Decimal
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Q, Sum, Prefetch
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -136,8 +138,16 @@ class ProdutosPDVViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by("-total_vendido")[:10]
         )
         ids = [r["produto"] for r in rows]
-        produtos = Produto.objects.filter(id__in=ids, is_active=True).select_related(
-            "categoria"
+        empresa = atendente.loja.empresa
+        produtos = (
+            Produto.objects.filter(
+                id__in=ids,
+                is_active=True,
+                parametros_por_empresa__empresa=empresa,
+                parametros_por_empresa__ativo_nessa_empresa=True,
+            )
+            .select_related("categoria")
+            .distinct()
         )
         # manter ordem por total_vendido
         order = {pid: i for i, pid in enumerate(ids)}
@@ -231,13 +241,16 @@ class PedidosPDVViewSet(viewsets.ModelViewSet):
                     is_active=True,
                 ).first()
             if not condicao:
-                condicao = CondicaoPagamento.objects.create(
-                    empresa=atendente.loja.empresa,
-                    nome="À Vista",
-                    numero_parcelas=1,
-                    dias_entre_parcelas=0,
-                    created_by=self.request.user,
-                )
+                with transaction.atomic():
+                    condicao, _ = CondicaoPagamento.objects.select_for_update().get_or_create(
+                        empresa=atendente.loja.empresa,
+                        nome="À Vista",
+                        defaults={
+                            "numero_parcelas": 1,
+                            "dias_entre_parcelas": 0,
+                            "created_by": self.request.user,
+                        },
+                    )
 
         tipo_venda = data.get("tipo_venda") or "BALCAO"
         observacoes = data.get("observacoes")
@@ -293,12 +306,52 @@ class PedidosPDVViewSet(viewsets.ModelViewSet):
             )
         ser = ItemPedidoSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        atendente = request.user.atendente_pdv
+        produto_id = ser.validated_data["produto"].id
+        produto = get_object_or_404(
+            Produto,
+            pk=produto_id,
+            is_active=True,
+            parametros_por_empresa__empresa=atendente.loja.empresa,
+            parametros_por_empresa__ativo_nessa_empresa=True,
+        )
+        desconto = ser.validated_data.get("desconto") or Decimal("0.00")
+        if desconto > 0:
+            try:
+                config = pedido.loja.config_pdv_movel
+                permite_desconto = config.permitir_desconto
+                desconto_maximo = config.desconto_maximo_percentual
+            except Exception:
+                permite_desconto = False
+                desconto_maximo = Decimal("0.00")
+
+            if not permite_desconto:
+                return Response(
+                    {"erro": "Desconto não permitido nas configurações do PDV Móvel."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            preco_unitario = ser.validated_data.get("preco_unitario")
+            quantidade = ser.validated_data.get("quantidade")
+            valor_total_item = preco_unitario * quantidade
+            if valor_total_item > 0:
+                percentual_desconto = (desconto / valor_total_item) * Decimal("100")
+                if percentual_desconto > desconto_maximo:
+                    return Response(
+                        {
+                            "erro": (
+                                f"Desconto de {percentual_desconto:.1f}% "
+                                f"excede o máximo permitido de {desconto_maximo}%."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
         codigo_barras_usado = (ser.validated_data.get("codigo_barras_usado") or "").strip() or None
         codigo_alt = ser.validated_data.get("codigo_alternativo_usado")
         multiplicador_aplicado = ser.validated_data.get("multiplicador_aplicado") or Decimal("1.000")
         item = ItemPedidoVenda.objects.create(
             pedido=pedido,
-            produto=ser.validated_data["produto"],
+            produto=produto,
             quantidade=ser.validated_data["quantidade"],
             preco_unitario=ser.validated_data["preco_unitario"],
             desconto=ser.validated_data.get("desconto") or Decimal("0.00"),

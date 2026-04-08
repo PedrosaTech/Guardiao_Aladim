@@ -61,6 +61,20 @@
         .btn-success:hover {
             background: #229954;
         }
+        .btn-primary {
+            background: #2980b9;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1f6391;
+        }
+        .btn-warning {
+            background: #e67e22;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #ca6f1e;
+        }
         .content-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -190,8 +204,15 @@
                 </div>
             </div>
             <div class="header-actions">
+                {% if user.is_staff and nota.tipo_documento == 'NFE' %}
+                    {% if nota.status == 'RASCUNHO' %}
+                    <a href="{% url 'fiscal:gerar-xml-nota' nota.id %}" class="btn btn-primary">Gerar XML</a>
+                    {% elif nota.status == 'EM_PROCESSAMENTO' %}
+                    <a href="{% url 'fiscal:autorizar-nota' nota.id %}" class="btn btn-warning">Autorizar na SEFAZ</a>
+                    {% endif %}
+                {% endif %}
                 {% if nota.status == 'AUTORIZADA' %}
-                <a href="{% url 'fiscal:imprimir_nfe_pdf' nota.id %}" class="btn btn-success" target="_blank">📄 Imprimir PDF</a>
+                <a href="{% url 'fiscal:imprimir_nfe_pdf' nota.id %}" class="btn btn-success" target="_blank">Imprimir PDF</a>
                 {% endif %}
                 <a href="{% url 'fiscal:lista_notas_saida' %}" class="btn btn-secondary">Voltar</a>
             </div>
@@ -241,6 +262,12 @@
                         <div class="info-item" style="grid-column: 1 / -1;">
                             <span class="info-label">Chave de Acesso</span>
                             <span class="info-value" style="font-family: monospace; font-size: 12px;">{{ nota.chave_acesso }}</span>
+                        </div>
+                        {% endif %}
+                        {% if nota.status == 'REJEITADA' and nota.motivo_cancelamento %}
+                        <div class="info-item" style="grid-column: 1 / -1;">
+                            <span class="info-label">Retorno SEFAZ</span>
+                            <span class="info-value" style="font-size: 14px; color: #c0392b;">{{ nota.motivo_cancelamento }}</span>
                         </div>
                         {% endif %}
                     </div>

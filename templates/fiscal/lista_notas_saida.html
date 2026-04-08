@@ -114,6 +114,13 @@
         .btn-success:hover {
             background: #229954;
         }
+        .btn-warning {
+            background: #e67e22;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #ca6f1e;
+        }
         .notas-table {
             background: white;
             border-radius: 8px;
@@ -315,6 +322,13 @@
                         </td>
                         <td>
                             <a href="{% url 'fiscal:detalhes_nota_saida' nota.id %}" class="btn btn-info" style="padding: 5px 10px; font-size: 12px;">Ver</a>
+                            {% if user.is_staff and nota.tipo_documento == 'NFE' %}
+                                {% if nota.status == 'RASCUNHO' %}
+                                <a href="{% url 'fiscal:gerar-xml-nota' nota.id %}" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">XML</a>
+                                {% elif nota.status == 'EM_PROCESSAMENTO' %}
+                                <a href="{% url 'fiscal:autorizar-nota' nota.id %}" class="btn btn-warning" style="padding: 5px 10px; font-size: 12px;">SEFAZ</a>
+                                {% endif %}
+                            {% endif %}
                             {% if nota.status == 'AUTORIZADA' %}
                             <a href="{% url 'fiscal:imprimir_nfe_pdf' nota.id %}" class="btn btn-success" style="padding: 5px 10px; font-size: 12px;" target="_blank">PDF</a>
                             {% endif %}

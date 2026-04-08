@@ -16,6 +16,8 @@ weasyprint>=60.0
 
 # Criptografia LGPD
 cryptography>=41.0.7
+lxml>=5.0.0
+PyNFe>=0.6.5
 
 # Produção (Render)
 gunicorn>=21.0.0
@@ -29,3 +31,5 @@ python-json-logger>=2.0.0
 # - celery (para tarefas assíncronas)
 # - redis (para cache e celery)
 
+signxml>=3.2.0
+requests>=2.31.0
