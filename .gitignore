@@ -72,3 +72,4 @@ fornecedores_pirotecnia.csv
 # Backups locais (conteudo sensivel); manter apenas backups/README.md
 backups/**
 !backups/README.md
+certificados/
