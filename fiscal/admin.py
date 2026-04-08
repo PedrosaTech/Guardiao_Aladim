@@ -2,11 +2,13 @@
 Admin para modelos fiscais.
 """
 from django.contrib import admin
+from .forms import ConfiguracaoFiscalLojaAdminForm
 from .models import ConfiguracaoFiscalLoja, NotaFiscalSaida, NotaFiscalEntrada, ItemNotaFiscalEntrada, HistoricoEntradaEstoque, AlertaNotaFiscal
 
 
 @admin.register(ConfiguracaoFiscalLoja)
 class ConfiguracaoFiscalLojaAdmin(admin.ModelAdmin):
+    form = ConfiguracaoFiscalLojaAdminForm
     list_display = ['loja', 'cnpj', 'inscricao_estadual', 'regime_tributario', 'usar_reforma_2026', 'ambiente', 'is_active']
     list_filter = ['ambiente', 'usar_reforma_2026', 'is_active']
     search_fields = ['loja__nome', 'cnpj', 'inscricao_estadual']

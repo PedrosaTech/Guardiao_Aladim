@@ -287,8 +287,6 @@ class ConfiguracaoFiscalLojaForm(forms.ModelForm):
         loja_base = Loja.objects.filter(is_active=True)
         if empresa:
             loja_base = loja_base.filter(empresa=empresa)
-        else:
-            loja_base = Loja.objects.none()
         if self.instance and self.instance.pk:
             self.fields["loja"].queryset = loja_base
         else:
@@ -308,3 +306,10 @@ class ConfiguracaoFiscalLojaForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class ConfiguracaoFiscalLojaAdminForm(ConfiguracaoFiscalLojaForm):
+    """Admin: todos os campos do model (incl. BaseModel) e mesma proteção de senha."""
+
+    class Meta(ConfiguracaoFiscalLojaForm.Meta):
+        fields = "__all__"
