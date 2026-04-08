@@ -10,6 +10,7 @@ from django.test import TestCase
 from core.models import Empresa, Loja
 from fiscal.models import ConfiguracaoFiscalLoja
 from fiscal.numeracao import reservar_numero_nfe, reservar_numero_nfce
+from fiscal.nfe_cancelamento import extrair_protocolo_do_xml
 
 
 class TestReservaNumeracaoNF(TestCase):
@@ -75,3 +76,19 @@ class TestReservaNumeracaoNF(TestCase):
             len(set(resultados)),
             'Números duplicados detectados!',
         )
+
+
+class TestExtrairProtocoloCancelamento(TestCase):
+    def test_extrai_nprot_de_proc_nfe(self):
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <protNFe versao="4.00">
+    <infProt Id="IdProt000">
+      <nProt>312456789012345</nProt>
+    </infProt>
+  </protNFe>
+</nfeProc>"""
+        self.assertEqual(extrair_protocolo_do_xml(xml), '312456789012345')
+
+    def test_xml_vazio_retorna_string_vazia(self):
+        self.assertEqual(extrair_protocolo_do_xml(''), '')

@@ -19,6 +19,7 @@ urlpatterns = [
     path('notas-saida/detalhes/<int:nota_id>/', views.detalhes_nota_saida, name='detalhes_nota_saida'),
     path('nota/<int:nota_id>/gerar-xml/', views.gerar_xml_nota, name='gerar-xml-nota'),
     path('nota/<int:nota_id>/autorizar/', views.autorizar_nota, name='autorizar-nota'),
+    path('nota/<int:nota_id>/cancelar/', views.cancelar_nota, name='cancelar-nota'),
     
     # Notas Fiscais de Entrada
     path('notas-entrada/', views.lista_notas_entrada, name='lista_notas_entrada'),

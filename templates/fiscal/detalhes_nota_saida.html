@@ -214,6 +214,9 @@
                 {% if nota.status == 'AUTORIZADA' %}
                 <a href="{% url 'fiscal:imprimir_nfe_pdf' nota.id %}" class="btn btn-success" target="_blank">Imprimir PDF</a>
                 {% endif %}
+                {% if user.is_staff and nota.tipo_documento == 'NFE' and nota.status == 'AUTORIZADA' %}
+                <a href="{% url 'fiscal:cancelar-nota' nota.id %}" class="btn btn-danger">Cancelar NF-e</a>
+                {% endif %}
                 <a href="{% url 'fiscal:lista_notas_saida' %}" class="btn btn-secondary">Voltar</a>
             </div>
         </div>

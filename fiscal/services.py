@@ -233,3 +233,34 @@ def autorizar_nfe(nota_id: int, usuario=None):
         )
 
     return resultado
+
+
+def cancelar_nota_fiscal(nota_id: int, justificativa: str, usuario=None) -> dict:
+    """
+    Cancela NF-e autorizada via evento na SEFAZ.
+    Atualiza status para CANCELADA e grava a justificativa quando o evento é aceito.
+    """
+    from .nfe_cancelamento import cancelar_nfe
+
+    nota = NotaFiscalSaida.objects.select_related(
+        'loja',
+        'loja__configuracao_fiscal',
+    ).get(pk=nota_id)
+
+    resultado = cancelar_nfe(nota, justificativa, usuario=usuario)
+
+    if resultado['cancelada']:
+        nota.status = 'CANCELADA'
+        nota.motivo_cancelamento = justificativa
+        nota.save()
+        logger.info('NF-e CANCELADA: %s/%s', nota.numero, nota.serie)
+    else:
+        logger.warning(
+            'Cancelamento NF-e FALHOU: %s/%s cStat=%s xMotivo=%s',
+            nota.numero,
+            nota.serie,
+            resultado['cStat'],
+            resultado['xMotivo'],
+        )
+
+    return resultado

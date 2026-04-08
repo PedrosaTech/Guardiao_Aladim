@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .decorators import administrador_required
 from .forms import EmpresaForm, LojaForm
-from .models import Empresa, Loja
+from .models import Empresa, Loja, UsuarioEmpresa
 
 
 @administrador_required
@@ -47,6 +47,16 @@ def criar_empresa(request):
             empresa.created_by = request.user
             empresa.updated_by = request.user
             empresa.save()
+            UsuarioEmpresa.objects.get_or_create(
+                user=request.user,
+                empresa=empresa,
+                defaults={
+                    'perfil': 'ADMIN',
+                    'empresa_padrao': True,
+                    'created_by': request.user,
+                    'updated_by': request.user,
+                },
+            )
             messages.success(request, f'Empresa "{empresa.nome_fantasia}" criada com sucesso!')
             return redirect("core:lista_empresas")
     else:

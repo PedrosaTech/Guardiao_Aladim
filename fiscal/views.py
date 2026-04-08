@@ -331,6 +331,59 @@ def autorizar_nota(request, nota_id):
 
 
 @login_required
+def cancelar_nota(request, nota_id):
+    """
+    Formulário de cancelamento (GET) e envio do evento de cancelamento à SEFAZ (POST).
+    """
+    from .services import cancelar_nota_fiscal
+
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    empresa = get_empresa_ativa(request)
+    nota = get_object_or_404(
+        NotaFiscalSaida,
+        pk=nota_id,
+        loja__empresa=empresa,
+        is_active=True,
+    )
+
+    if nota.tipo_documento != 'NFE' or nota.status != 'AUTORIZADA':
+        messages.warning(
+            request,
+            f'Nota {nota.numero}/{nota.serie} não pode ser cancelada por este fluxo '
+            f'(tipo ou status: {nota.get_status_display()}).',
+        )
+        return redirect('fiscal:lista_notas_saida')
+
+    if request.method == 'POST':
+        justificativa = request.POST.get('justificativa', '').strip()
+        try:
+            resultado = cancelar_nota_fiscal(
+                nota.id,
+                justificativa=justificativa,
+                usuario=request.user,
+            )
+            if resultado['cancelada']:
+                messages.success(
+                    request,
+                    f'NF-e {nota.numero}/{nota.serie} cancelada com sucesso.',
+                )
+                return redirect('fiscal:lista_notas_saida')
+            messages.error(
+                request,
+                f'Falha no cancelamento: cStat={resultado["cStat"]} — {resultado["xMotivo"]}',
+            )
+        except (ValueError, ValidationError) as exc:
+            messages.error(request, str(exc))
+        except Exception as exc:
+            messages.error(request, f'Erro inesperado: {exc}')
+            logger.exception('Erro ao cancelar nota %s', nota_id)
+
+    return render(request, 'fiscal/cancelar_nota.html', {'nota': nota})
+
+
+@login_required
 def lista_notas_entrada(request):
     """
     Lista de notas fiscais de entrada.
