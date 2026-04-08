@@ -13,6 +13,8 @@ pytest-django>=4.7.0
 
 # Geração de PDF
 weasyprint>=60.0
+qrcode[pil]>=7.4.2
+pillow>=10.0.0
 
 # Criptografia LGPD
 cryptography>=41.0.7

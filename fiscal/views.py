@@ -1,7 +1,10 @@
 """
 Views do módulo fiscal.
 """
+import base64
+import io
 import logging
+import re
 
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
@@ -28,6 +31,46 @@ try:
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
+
+try:
+    import qrcode
+    QRCODE_AVAILABLE = True
+except ImportError:
+    qrcode = None  # type: ignore[misc, assignment]
+    QRCODE_AVAILABLE = False
+
+
+def _formatar_cnpj(valor) -> str:
+    digitos = re.sub(r'\D', '', str(valor or ''))
+    if len(digitos) == 14:
+        return f'{digitos[:2]}.{digitos[2:5]}.{digitos[5:8]}/{digitos[8:12]}-{digitos[12:]}'
+    return digitos or '-'
+
+
+def _formatar_cpf_ou_cnpj(valor) -> str:
+    digitos = re.sub(r'\D', '', str(valor or ''))
+    if len(digitos) == 11:
+        return f'{digitos[:3]}.{digitos[3:6]}.{digitos[6:9]}-{digitos[9:]}'
+    if len(digitos) == 14:
+        return f'{digitos[:2]}.{digitos[2:5]}.{digitos[5:8]}/{digitos[8:12]}-{digitos[12:]}'
+    return digitos or '-'
+
+
+def _gerar_qrcode_nfe_base64(chave_acesso: str) -> str:
+    if not chave_acesso or not QRCODE_AVAILABLE:
+        return ''
+    url = (
+        'https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx'
+        '?tipoConsulta=completa&tipoConteudo=XbSeqxE8pl8='
+        f'&nfe={chave_acesso}'
+    )
+    qr = qrcode.QRCode(version=1, box_size=3, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='black', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
 
 
 @login_required
@@ -851,33 +894,72 @@ def imprimir_nfe_pdf(request, nota_id):
     pedido = nota.pedido_venda
     itens = []
     if pedido:
-        itens = pedido.itens.filter(is_active=True).select_related('produto')
-    
+        itens = list(
+            pedido.itens.filter(is_active=True).select_related('produto')
+        )
+
+    loja_empresa = nota.loja.empresa
+
+    from produtos.models import ProdutoParametrosEmpresa
+
+    params_map = {}
+    if itens:
+        produto_ids = [item.produto_id for item in itens]
+        params_qs = ProdutoParametrosEmpresa.objects.filter(
+            empresa=loja_empresa,
+            produto_id__in=produto_ids,
+        )
+        params_map = {p.produto_id: p for p in params_qs}
+
+    itens_com_params = []
+    for item in itens:
+        params = params_map.get(item.produto_id)
+        itens_com_params.append({
+            'item': item,
+            'cfop': params.cfop_venda_dentro_uf if params else None,
+            'cst': params.csosn_cst if params else None,
+        })
+
     # Buscar configuração fiscal da loja
     config_fiscal = None
-    regime_tributario = None
     try:
         config_fiscal = nota.loja.configuracao_fiscal
-        if config_fiscal:
-            regime_tributario = config_fiscal.regime_tributario
-    except:
+    except ConfiguracaoFiscalLoja.DoesNotExist:
         pass
-    
+
+    cnpj_emitente_raw = ''
+    if config_fiscal and config_fiscal.cnpj:
+        cnpj_emitente_raw = config_fiscal.cnpj
+    elif loja_empresa.cnpj:
+        cnpj_emitente_raw = loja_empresa.cnpj
+    cnpj_emitente_formatado = _formatar_cnpj(cnpj_emitente_raw)
+
+    cliente = nota.cliente
+    cpf_cnpj_dest_formatado = _formatar_cpf_ou_cnpj(
+        cliente.cpf_cnpj if cliente else ''
+    )
+
+    qrcode_b64 = _gerar_qrcode_nfe_base64(nota.chave_acesso or '')
+
     # Calcular impostos conforme normas SEFAZ-BA
     # IMPORTANTE: Para Simples Nacional, os impostos não são calculados separadamente
     # Usar get_impostos() que já considera snapshot se autorizada
     impostos = nota.get_impostos()
-    
+
     # Preparar contexto
     context = {
         'nota': nota,
         'loja': nota.loja,
-        'empresa': nota.loja.empresa,
-        'cliente': nota.cliente,
+        'empresa': loja_empresa,
+        'cliente': cliente,
         'pedido': pedido,
         'itens': itens,
+        'itens_com_params': itens_com_params,
         'config_fiscal': config_fiscal,
         'impostos': impostos,
+        'cnpj_emitente_formatado': cnpj_emitente_formatado,
+        'cpf_cnpj_dest_formatado': cpf_cnpj_dest_formatado,
+        'qrcode_b64': qrcode_b64,
     }
     
     # Renderizar template HTML
