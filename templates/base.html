@@ -403,6 +403,144 @@
         }, true);
     })();
     </script>
+    <script>
+    /**
+     * BuscaCEP — preenchimento automático de endereço via ViaCEP
+     * Funciona em qualquer formulário que tenha campos com os IDs/names corretos.
+     */
+    (function () {
+        'use strict';
+
+        var CAMPOS_ENDERECO = {
+            logradouro: ['id_logradouro', 'logradouro'],
+            bairro: ['id_bairro', 'bairro'],
+            cidade: ['id_cidade', 'cidade'],
+            uf: ['id_uf', 'uf']
+        };
+
+        function encontrarCampo(form, seletores) {
+            var i, el, sel;
+            for (i = 0; i < seletores.length; i++) {
+                sel = seletores[i];
+                if (form) {
+                    el = form.querySelector('[name="' + sel + '"]');
+                    if (el) return el;
+                    el = form.querySelector('#' + sel);
+                    if (el) return el;
+                }
+                el = document.getElementById(sel);
+                if (el) return el;
+                el = document.querySelector('[name="' + sel + '"]');
+                if (el) return el;
+            }
+            return null;
+        }
+
+        function preencherEndereco(dados, form) {
+            var mapa = {
+                logradouro: dados.logradouro,
+                bairro: dados.bairro,
+                cidade: dados.localidade,
+                uf: dados.uf
+            };
+            var campo, valor, el;
+            for (campo in mapa) {
+                if (!Object.prototype.hasOwnProperty.call(mapa, campo)) continue;
+                valor = mapa[campo];
+                if (!valor) continue;
+                el = encontrarCampo(form, CAMPOS_ENDERECO[campo]);
+                if (el) {
+                    el.value = valor;
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+
+        function limparMascara(cep) {
+            return cep.replace(/\D/g, '');
+        }
+
+        function aplicarMascara(input) {
+            var v = limparMascara(input.value);
+            if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5, 8);
+            input.value = v;
+        }
+
+        function mostrarFeedback(msg, tipo) {
+            var existente = document.getElementById('busca-cep-feedback');
+            if (existente) existente.remove();
+
+            var div = document.createElement('div');
+            div.id = 'busca-cep-feedback';
+            div.textContent = msg;
+            div.style.cssText =
+                'position:fixed;bottom:20px;right:20px;padding:8px 16px;border-radius:4px;' +
+                'font-size:13px;z-index:9999;opacity:1;transition:opacity 0.5s;' +
+                'background:' + (tipo === 'sucesso' ? '#28a745' : '#dc3545') + ';color:white;';
+            document.body.appendChild(div);
+            setTimeout(function () {
+                div.style.opacity = '0';
+                setTimeout(function () { div.remove(); }, 500);
+            }, 2500);
+        }
+
+        function buscarCEP(input) {
+            var cepLimpo = limparMascara(input.value);
+            if (cepLimpo.length !== 8) return;
+
+            var form = input.closest ? input.closest('form') : null;
+
+            fetch('https://viacep.com.br/ws/' + cepLimpo + '/json/')
+                .then(function (resp) {
+                    if (!resp.ok) return null;
+                    return resp.json();
+                })
+                .then(function (dados) {
+                    if (!dados) return;
+                    if (dados.erro) {
+                        mostrarFeedback('CEP não encontrado.', 'erro');
+                        return;
+                    }
+                    preencherEndereco(dados, form);
+                    mostrarFeedback('Endereço preenchido!', 'sucesso');
+                })
+                .catch(function (e) {
+                    console.warn('BuscaCEP: erro na consulta', e);
+                });
+        }
+
+        function inicializar() {
+            var camposCEP = document.querySelectorAll(
+                'input[name="cep"], input#id_cep, ' +
+                'input[name="endereco_cep"], input[placeholder*="CEP"], ' +
+                'input[placeholder*="00000-000"]'
+            );
+
+            camposCEP.forEach(function (input) {
+                input.addEventListener('input', function () {
+                    aplicarMascara(this);
+                });
+
+                input.addEventListener('blur', function () {
+                    buscarCEP(this);
+                });
+
+                input.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        buscarCEP(this);
+                    }
+                });
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializar);
+        } else {
+            inicializar();
+        }
+    })();
+    </script>
 </body>
 </html>
 
