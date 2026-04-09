@@ -47,12 +47,17 @@ def criar_empresa(request):
             empresa.created_by = request.user
             empresa.updated_by = request.user
             empresa.save()
+            ja_tem_padrao = UsuarioEmpresa.objects.filter(
+                user=request.user,
+                empresa_padrao=True,
+                is_active=True,
+            ).exists()
             UsuarioEmpresa.objects.get_or_create(
                 user=request.user,
                 empresa=empresa,
                 defaults={
                     'perfil': 'ADMIN',
-                    'empresa_padrao': True,
+                    'empresa_padrao': not ja_tem_padrao,
                     'created_by': request.user,
                     'updated_by': request.user,
                 },
